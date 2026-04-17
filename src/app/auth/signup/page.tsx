@@ -11,6 +11,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -45,7 +46,8 @@ export default function SignupPage() {
       return;
     }
 
-    router.push("/journal");
+    setEmailSent(true);
+    setLoading(false);
   }
 
   async function handleGoogleLogin() {
@@ -66,7 +68,20 @@ export default function SignupPage() {
           <p className="mt-2 text-gray-500">회원가입하고 영어 학습을 시작하세요</p>
         </div>
 
-        <form onSubmit={handleSignup} className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
+        {emailSent && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center space-y-2">
+            <p className="text-blue-700 font-medium">인증 이메일을 발송했습니다</p>
+            <p className="text-sm text-blue-600">
+              <span className="font-semibold">{email}</span> 메일함을 확인하고 인증 링크를 클릭해주세요.
+            </p>
+            <p className="text-xs text-blue-400">인증 완료 후 로그인할 수 있습니다.</p>
+            <Link href="/auth/login" className="inline-block mt-2 text-sm text-blue-600 font-medium hover:underline">
+              로그인 페이지로 이동
+            </Link>
+          </div>
+        )}
+
+        <form onSubmit={handleSignup} className={`bg-white p-6 rounded-xl shadow-sm border space-y-4 ${emailSent ? "hidden" : ""}`}>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
             <input

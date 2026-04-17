@@ -24,7 +24,11 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      if (error.message === "Email not confirmed") {
+        setError("이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.");
+      } else {
+        setError(error.message);
+      }
       setLoading(false);
       return;
     }
