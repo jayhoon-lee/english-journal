@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { generateMockFeedback } from "@/lib/mock-feedback";
 import { NextResponse } from "next/server";
 
-const anthropic = new Anthropic();
+const USE_MOCK = !process.env.ANTHROPIC_API_KEY;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -15,6 +15,41 @@ export async function POST(request: Request) {
   }
 
   const { text } = await request.json();
+
+  if (USE_MOCK) {
+    const mockFeedback = generateMockFeedback(text);
+    const fullText = JSON.stringify(mockFeedback);
+    const encoder = new TextEncoder();
+
+    const readable = new ReadableStream({
+      async start(controller) {
+        const chars = fullText.split("");
+        for (let i = 0; i < chars.length; i += 5) {
+          const chunk = chars.slice(i, i + 5).join("");
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
+          );
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ done: true, fullText })}\n\n`)
+        );
+        controller.close();
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  // Real Claude API
+  const Anthropic = (await import("@anthropic-ai/sdk")).default;
+  const anthropic = new Anthropic();
 
   const { data: patterns } = await supabase
     .from("mistake_patterns")

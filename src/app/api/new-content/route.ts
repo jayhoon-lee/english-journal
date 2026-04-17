@@ -1,8 +1,37 @@
 import { createClient } from "@/lib/supabase/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
-const anthropic = new Anthropic();
+const USE_MOCK = !process.env.ANTHROPIC_API_KEY;
+
+const MOCK_RECOMMENDATIONS = [
+  {
+    type: "expression",
+    content: "get the hang of",
+    meaning: "요령을 터득하다, 감을 잡다",
+    example: "It took me a while, but I finally got the hang of cooking pasta.",
+    context: "새로운 기술이나 활동을 배우는 상황에서 사용합니다.",
+    difficulty: "intermediate",
+    recommendation_reason: "일상적으로 자주 쓰이는 표현으로, 학습 경험을 영어로 표현할 때 유용합니다.",
+  },
+  {
+    type: "phrasal_verb",
+    content: "come across",
+    meaning: "우연히 발견하다, 마주치다",
+    example: "I came across an interesting article about language learning.",
+    context: "예상치 못하게 무언가를 발견했을 때 사용합니다.",
+    difficulty: "easy",
+    recommendation_reason: "일기에서 일상 경험을 묘사할 때 활용도가 높습니다.",
+  },
+  {
+    type: "grammar",
+    content: "I wish + 과거 시제",
+    meaning: "~했으면 좋겠다 (현재 사실의 반대)",
+    example: "I wish I had more time to study English.",
+    context: "현재 상황에 대한 아쉬움이나 바람을 표현할 때 사용합니다.",
+    difficulty: "intermediate",
+    recommendation_reason: "가정법은 중급 이상에서 자주 등장하며, 감정 표현의 폭을 넓혀줍니다.",
+  },
+];
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -13,6 +42,13 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  if (USE_MOCK) {
+    return NextResponse.json({ recommendations: MOCK_RECOMMENDATIONS });
+  }
+
+  const Anthropic = (await import("@anthropic-ai/sdk")).default;
+  const anthropic = new Anthropic();
 
   const { data: stats } = await supabase
     .from("user_stats")
