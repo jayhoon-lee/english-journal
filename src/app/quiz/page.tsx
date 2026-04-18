@@ -88,7 +88,7 @@ export default function QuizPage() {
   if (questions.length === 0 && !loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">퀴즈</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">퀴즈</h1>
         <div className="bg-white rounded-xl border p-8 text-center space-y-6">
           <p className="text-gray-500">내 실수 패턴을 기반으로 퀴즈를 생성합니다.</p>
 
@@ -119,7 +119,7 @@ export default function QuizPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">퀴즈</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">퀴즈</h1>
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
           퀴즈 생성 중...
         </div>
@@ -131,7 +131,7 @@ export default function QuizPage() {
   if (finished) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">퀴즈 결과</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">퀴즈 결과</h1>
         <div className="bg-white rounded-xl border p-8 text-center space-y-4">
           <div className="text-5xl font-bold text-blue-600">
             {score} / {questions.length}
@@ -160,7 +160,7 @@ export default function QuizPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">퀴즈</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">퀴즈</h1>
         <span className="text-sm text-gray-400">
           {current + 1} / {questions.length}
         </span>

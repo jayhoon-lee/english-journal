@@ -60,7 +60,7 @@ export default function NewContentPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">새 학습</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">새 학습</h1>
         <button
           onClick={loadRecommendations}
           disabled={loading}

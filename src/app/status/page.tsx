@@ -89,7 +89,7 @@ export default function StatusPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">레벨·순위</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">레벨·순위</h1>
         <div className="text-center py-12 text-gray-400">로딩 중...</div>
       </div>
     );
@@ -112,19 +112,19 @@ export default function StatusPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">레벨·순위</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">레벨·순위</h1>
 
       {/* 레벨 + EQS */}
       <div className="bg-white rounded-xl border p-6">
         <div className="flex items-center gap-4 mb-4">
-          <span className="text-4xl">{currentLevel.emoji}</span>
+          <span className="text-3xl sm:text-4xl">{currentLevel.emoji}</span>
           <div>
             <div className="text-sm text-gray-500">Lv.{currentLevel.lv}</div>
             <div className="text-xl font-bold">{currentLevel.name}</div>
           </div>
           <div className="ml-auto text-right">
             <div className="text-sm text-gray-500">EQS</div>
-            <div className="text-3xl font-bold text-blue-600">{stats?.current_eqs || 0}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600">{stats?.current_eqs || 0}</div>
           </div>
         </div>
 
@@ -146,7 +146,7 @@ export default function StatusPage() {
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         <div className="bg-white rounded-xl border p-4 text-center">
           <div className="text-sm text-gray-500">총 일기</div>
           <div className="text-2xl font-bold">{stats?.total_entries || 0}</div>

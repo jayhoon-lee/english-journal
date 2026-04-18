@@ -151,12 +151,12 @@ export default function JournalPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">일기</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold">일기</h1>
         <div className="flex gap-2">
           <button
             onClick={() => setTab("write")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               tab === "write"
                 ? "bg-blue-50 text-blue-700 border border-blue-200"
                 : "bg-white text-gray-600 border hover:bg-gray-50"
@@ -166,7 +166,7 @@ export default function JournalPage() {
           </button>
           <button
             onClick={() => setTab("history")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               tab === "history"
                 ? "bg-blue-50 text-blue-700 border border-blue-200"
                 : "bg-white text-gray-600 border hover:bg-gray-50"
@@ -268,7 +268,7 @@ export default function JournalPage() {
                         {entry.original_text}
                       </p>
                       {score && (
-                        <div className="flex gap-3 mt-2 text-xs text-gray-400">
+                        <div className="flex flex-wrap gap-2 sm:gap-3 mt-2 text-[10px] sm:text-xs text-gray-400">
                           <span>어휘 {score.vocabulary_score}</span>
                           <span>문법 {score.grammar_score}</span>
                           <span>표현 {score.expression_score}</span>
@@ -303,7 +303,7 @@ function FeedbackView({
     <div className="space-y-4">
       <div className="bg-white rounded-xl border p-6">
         <h2 className="font-semibold mb-4">EQS 채점 결과</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4 text-center">
           {[
             { label: "어휘", score: feedback.scoring.vocabulary_score },
             { label: "문법", score: feedback.scoring.grammar_score },
@@ -313,7 +313,7 @@ function FeedbackView({
           ].map(({ label, score }) => (
             <div key={label} className="p-3 bg-gray-50 rounded-lg">
               <div className="text-sm text-gray-500">{label}</div>
-              <div className={`text-2xl font-bold ${scoreColor(score)}`}>{score}</div>
+              <div className={`text-xl sm:text-2xl font-bold ${scoreColor(score)}`}>{score}</div>
             </div>
           ))}
         </div>

@@ -75,29 +75,29 @@ export default function MyExpressionsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">내 표현 관리</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">내 표현 관리</h1>
 
       {/* 탭 */}
       <div className="flex gap-2">
         <button
           onClick={() => setTab("watch")}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
             tab === "watch"
               ? "bg-red-50 text-red-700 border border-red-200"
               : "bg-white text-gray-600 border hover:bg-gray-50"
           }`}
         >
-          Watch List (주의 목록)
+          Watch List
         </button>
         <button
           onClick={() => setTab("keep")}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
             tab === "keep"
               ? "bg-blue-50 text-blue-700 border border-blue-200"
               : "bg-white text-gray-600 border hover:bg-gray-50"
           }`}
         >
-          Keep List (유지 목록)
+          Keep List
         </button>
       </div>
 
@@ -119,12 +119,12 @@ export default function MyExpressionsPage() {
                       <span className="text-lg">{badge.emoji}</span>
                       <span className="font-semibold">{p.pattern_name}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-sm">
+                    <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm flex-wrap">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>
                         {badge.label}
                       </span>
                       <span className="text-gray-400">실수 {p.count}회</span>
-                      <span className="text-gray-400">연속클린 {p.consecutive_clean}회</span>
+                      <span className="text-gray-400">클린 {p.consecutive_clean}</span>
                     </div>
                   </div>
                   {p.rule && <p className="text-sm text-gray-600 mb-2">{p.rule}</p>}
