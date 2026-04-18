@@ -18,12 +18,37 @@ export default function Nav() {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [level, setLevel] = useState<number>(1);
+  const [eqs, setEqs] = useState<number>(0);
   const supabase = createClient();
+
+  const levelInfo: Record<number, { emoji: string; name: string }> = {
+    1: { emoji: "🌱", name: "Beginner" },
+    2: { emoji: "📖", name: "Elementary" },
+    3: { emoji: "💬", name: "Pre-Inter" },
+    4: { emoji: "🗣️", name: "Intermediate" },
+    5: { emoji: "⚡", name: "Upper-Inter" },
+    6: { emoji: "🎯", name: "Advanced" },
+    7: { emoji: "📰", name: "Proficient" },
+    8: { emoji: "🏆", name: "Expert" },
+    9: { emoji: "👑", name: "Master" },
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setEmail(user?.email ?? null);
     });
+
+    supabase
+      .from("user_stats")
+      .select("level, current_eqs")
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setLevel(data.level || 1);
+          setEqs(data.current_eqs || 0);
+        }
+      });
   }, [pathname]);
 
   useEffect(() => {
@@ -67,7 +92,15 @@ export default function Nav() {
           <div className="flex items-center gap-3">
             {email && (
               <div className="hidden md:flex items-center gap-3">
-                <span className="text-sm text-gray-500 max-w-[160px] truncate">{email}</span>
+                <Link
+                  href="/status"
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <span className="text-sm">{levelInfo[level]?.emoji}</span>
+                  <span className="text-xs font-semibold text-gray-700">Lv.{level}</span>
+                  <span className="text-xs text-gray-400">{eqs}점</span>
+                </Link>
+                <span className="text-sm text-gray-500 max-w-[120px] truncate">{email.split("@")[0]}</span>
                 <button
                   onClick={handleLogout}
                   className="text-sm text-gray-400 hover:text-red-500 transition-colors"
@@ -75,6 +108,17 @@ export default function Nav() {
                   로그아웃
                 </button>
               </div>
+            )}
+
+            {/* Mobile Level Badge */}
+            {email && (
+              <Link
+                href="/status"
+                className="md:hidden flex items-center gap-1 px-2 py-0.5 bg-gray-50 rounded-full"
+              >
+                <span className="text-xs">{levelInfo[level]?.emoji}</span>
+                <span className="text-[10px] font-semibold text-gray-700">Lv.{level}</span>
+              </Link>
             )}
 
             {/* Mobile Menu Button */}
@@ -112,6 +156,11 @@ export default function Nav() {
             ))}
             {email && (
               <div className="border-t border-gray-100 mt-2 pt-2">
+                <div className="px-3 py-2 flex items-center gap-2">
+                  <span>{levelInfo[level]?.emoji}</span>
+                  <span className="text-sm font-medium">Lv.{level} {levelInfo[level]?.name}</span>
+                  <span className="text-xs text-gray-400">실력 {eqs}점</span>
+                </div>
                 <div className="px-3 py-1 text-xs text-gray-400 truncate">{email}</div>
                 <button
                   onClick={handleLogout}
