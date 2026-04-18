@@ -21,6 +21,7 @@ export async function POST(request: Request) {
       original_text: originalText,
       corrected_text: feedback.corrected_text,
       coach_feedback: feedback.feedback_summary,
+      feedback_json: JSON.stringify(feedback),
     })
     .select()
     .single();

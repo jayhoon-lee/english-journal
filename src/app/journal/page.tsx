@@ -41,6 +41,7 @@ interface JournalEntry {
   original_text: string;
   corrected_text: string;
   coach_feedback: string;
+  feedback_json: string | null;
   created_at: string;
   entry_scores: {
     vocabulary_score: number;
@@ -103,7 +104,7 @@ export default function JournalPage() {
     setLoadingHistory(true);
     const { data } = await supabase
       .from("journal_entries")
-      .select("*, entry_scores(vocabulary_score, grammar_score, expression_score, accuracy_score, eqs, vocab_level)")
+      .select("*, entry_scores(vocabulary_score, grammar_score, expression_score, accuracy_score, eqs, vocab_level), feedback_json")
       .order("date", { ascending: false })
       .order("created_at", { ascending: false });
     setEntries(data || []);
@@ -564,9 +565,11 @@ function EntryDetail({
         </div>
       )}
 
+      <EntryFeedbackDetail feedbackJson={entry.feedback_json} />
+
       {entry.coach_feedback && (
         <div className="bg-white rounded-xl border p-6">
-          <h3 className="font-semibold mb-2 text-sm text-gray-500">AI 피드백</h3>
+          <h3 className="font-semibold mb-2 text-sm text-gray-500">피드백 요약</h3>
           <p className="text-gray-700">{entry.coach_feedback}</p>
         </div>
       )}
@@ -577,6 +580,66 @@ function EntryDetail({
         </div>
       )}
     </div>
+  );
+}
+
+function EntryFeedbackDetail({ feedbackJson }: { feedbackJson: string | null }) {
+  if (!feedbackJson) return null;
+
+  let feedback: Feedback;
+  try {
+    feedback = JSON.parse(feedbackJson);
+  } catch {
+    return null;
+  }
+
+  if (!feedback.mistakes?.length && !feedback.scoring) return null;
+
+  return (
+    <>
+      {feedback.mistakes?.length > 0 && (
+        <div className="bg-white rounded-xl border p-6">
+          <h3 className="font-semibold mb-3 text-sm text-gray-500">실수 상세</h3>
+          <div className="space-y-3">
+            {feedback.mistakes.map((m, i) => (
+              <div key={i} className="p-3 bg-red-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-medium text-red-700">{m.pattern_name}</span>
+                  {m.is_new_pattern && (
+                    <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">NEW</span>
+                  )}
+                </div>
+                <div className="text-sm text-gray-600">
+                  <span className="bg-red-100 text-red-600 px-1 rounded line-through">{m.original}</span>
+                  <span className="mx-1.5 text-gray-400">→</span>
+                  <span className="bg-green-100 text-green-700 px-1 rounded">{m.corrected}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{m.rule}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {feedback.scoring?.scoring_reason && (
+        <div className="bg-white rounded-xl border p-6">
+          <h3 className="font-semibold mb-3 text-sm text-gray-500">채점 상세</h3>
+          <div className="space-y-2 text-sm">
+            {[
+              { label: "어휘", reason: feedback.scoring.scoring_reason.vocabulary },
+              { label: "문법", reason: feedback.scoring.scoring_reason.grammar },
+              { label: "표현", reason: feedback.scoring.scoring_reason.expression },
+              { label: "정확도", reason: feedback.scoring.scoring_reason.accuracy },
+            ].map(({ label, reason }) => (
+              <div key={label} className="flex gap-2">
+                <span className="text-gray-400 shrink-0 w-12">{label}</span>
+                <span className="text-gray-600">{reason}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
