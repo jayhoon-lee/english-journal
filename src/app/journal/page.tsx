@@ -118,18 +118,27 @@ export default function JournalPage() {
     }
 
     try {
-      const parsed: Feedback = JSON.parse(fullText);
+      const cleaned = fullText
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
+      const parsed: Feedback = JSON.parse(cleaned);
       setFeedback(parsed);
 
       setSaving(true);
-      await fetch("/api/journal/save", {
+      const saveRes = await fetch("/api/journal/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ originalText: text, feedback: parsed }),
       });
-      setSaved(true);
-    } catch {
-      // JSON 파싱 실패 시 스트리밍 텍스트 유지
+      if (saveRes.ok) {
+        setSaved(true);
+      } else {
+        const err = await saveRes.json();
+        console.error("Save failed:", err);
+      }
+    } catch (e) {
+      console.error("Parse error:", e, "fullText:", fullText);
     }
 
     setSaving(false);

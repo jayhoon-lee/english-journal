@@ -104,7 +104,7 @@ ${JSON.stringify(expressions || [])}
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
-      const fullText = await streamAIResponse(
+      const rawText = await streamAIResponse(
         systemPrompt,
         text,
         (chunk) => {
@@ -113,6 +113,11 @@ ${JSON.stringify(expressions || [])}
           );
         }
       );
+
+      const fullText = rawText
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
+        .trim();
 
       controller.enqueue(
         encoder.encode(`data: ${JSON.stringify({ done: true, fullText })}\n\n`)
