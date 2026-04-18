@@ -167,6 +167,55 @@ export default function JournalPage() {
     });
   };
 
+  const today = new Date();
+  const todayStr = today.toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  });
+
+  const getGreeting = () => {
+    const hour = today.getHours();
+    const day = today.getDay();
+    const greetings = {
+      morning: [
+        "좋은 아침이에요! 오늘도 영어로 하루를 시작해볼까요?",
+        "모닝! 아침에 쓰는 일기는 머리가 맑아서 더 잘 써져요 ☀️",
+        "일찍 일어나셨네요! 오늘의 일기를 기대할게요 🌅",
+      ],
+      afternoon: [
+        "오늘 하루 어떻게 보내고 계세요? 영어로 적어볼까요?",
+        "점심 드셨나요? 잠깐 영어 일기 한 편 어때요? 📝",
+        "오후에도 화이팅! 오늘 있었던 일을 영어로 남겨보세요 💪",
+      ],
+      evening: [
+        "오늘 하루 수고하셨어요! 하루를 영어로 정리해볼까요?",
+        "하루를 마무리하며 오늘의 이야기를 적어보세요 🌙",
+        "저녁 시간이네요. 오늘 가장 기억에 남는 순간을 써보세요 ✨",
+      ],
+      weekend: [
+        "주말이에요! 여유롭게 일기 한 편 써볼까요? 🎉",
+        "편안한 주말 보내고 계시죠? 오늘의 이야기를 들려주세요 😊",
+      ],
+    };
+
+    if (day === 0 || day === 6) {
+      const pool = greetings.weekend;
+      return pool[today.getDate() % pool.length];
+    }
+    if (hour < 12) {
+      const pool = greetings.morning;
+      return pool[today.getDate() % pool.length];
+    }
+    if (hour < 18) {
+      const pool = greetings.afternoon;
+      return pool[today.getDate() % pool.length];
+    }
+    const pool = greetings.evening;
+    return pool[today.getDate() % pool.length];
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
@@ -199,9 +248,12 @@ export default function JournalPage() {
       {tab === "write" && (
         <>
           <div className="bg-white rounded-xl border p-6 space-y-4">
-            <p className="text-sm text-gray-500">
-              {userName ? `${userName}님, ` : ""}오늘 하루는 어땠나요? 영어로 자유롭게 적어보세요 ✨
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-gray-400">{todayStr}</p>
+              <p className="text-sm text-gray-600">
+                {userName ? `${userName}님, ` : ""}{getGreeting()}
+              </p>
+            </div>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
