@@ -392,7 +392,7 @@ export default function JournalPage() {
                           <span>문법 {score.grammar_score}</span>
                           <span>표현 {score.expression_score}</span>
                           <span>정확도 {score.accuracy_score}</span>
-                          {score.vocab_level && <span>{score.vocab_level}</span>}
+                          {score.vocab_level && <span>CEFR {score.vocab_level}</span>}
                         </div>
                       )}
                     </button>
