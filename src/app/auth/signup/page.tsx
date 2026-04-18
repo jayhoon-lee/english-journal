@@ -65,7 +65,7 @@ export default function SignupPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-blue-600">English Journal</h1>
-          <p className="mt-2 text-gray-500">회원가입하고 영어 학습을 시작하세요</p>
+          <p className="mt-2 text-gray-500">가입하고 나만의 영어 코치를 만나보세요 🎯</p>
         </div>
 
         {emailSent && (

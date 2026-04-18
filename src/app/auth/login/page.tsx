@@ -51,7 +51,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-blue-600">English Journal</h1>
-          <p className="mt-2 text-gray-500">로그인하고 영어 실력을 키우세요</p>
+          <p className="mt-2 text-gray-500">다시 만나서 반가워요! 오늘도 함께 영어 연습해요 👋</p>
         </div>
 
         <form onSubmit={handleLogin} className="bg-white p-6 rounded-xl shadow-sm border space-y-4">

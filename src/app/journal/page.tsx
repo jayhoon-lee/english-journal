@@ -64,8 +64,17 @@ export default function JournalPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [userName, setUserName] = useState<string>("");
 
   const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        setUserName(user.email.split("@")[0]);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (tab === "history") loadHistory();
@@ -191,7 +200,7 @@ export default function JournalPage() {
         <>
           <div className="bg-white rounded-xl border p-6 space-y-4">
             <p className="text-sm text-gray-500">
-              오늘의 영어 일기를 작성하세요. AI가 교정과 피드백을 제공합니다.
+              {userName ? `${userName}님, ` : ""}오늘 하루는 어땠나요? 영어로 자유롭게 적어보세요 ✨
             </p>
             <textarea
               value={text}
@@ -246,12 +255,12 @@ export default function JournalPage() {
                 <div className="text-center py-12 text-gray-400">로딩 중...</div>
               ) : entries.length === 0 ? (
                 <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
-                  아직 작성된 일기가 없습니다.
+                  {userName ? `${userName}님, ` : ""}아직 작성된 일기가 없어요.
                   <button
                     onClick={() => setTab("write")}
                     className="block mx-auto mt-3 text-blue-600 hover:underline text-sm"
                   >
-                    첫 일기 작성하기
+                    첫 일기 작성하러 가기
                   </button>
                 </div>
               ) : (

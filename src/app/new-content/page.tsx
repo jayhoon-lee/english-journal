@@ -72,13 +72,13 @@ export default function NewContentPage() {
 
       {items.length === 0 && !loading && (
         <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
-          AI가 내 레벨과 실수 패턴에 맞는 새로운 학습 콘텐츠를 추천합니다.
+          내 레벨과 실수 패턴에 맞는 표현을 추천해드려요. 추천 받기를 눌러보세요 🆕
         </div>
       )}
 
       {loading && (
         <div className="bg-white rounded-xl border p-12 text-center text-gray-400">
-          AI가 맞춤 콘텐츠를 준비하고 있어요...
+          맞춤 콘텐츠를 준비하고 있어요... 잠시만 기다려주세요 ⏳
         </div>
       )}
 

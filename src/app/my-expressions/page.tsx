@@ -107,7 +107,7 @@ export default function MyExpressionsPage() {
         <div className="space-y-3">
           {patterns.length === 0 ? (
             <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
-              아직 기록된 실수 패턴이 없습니다. 일기를 작성해보세요!
+              아직 기록된 실수 패턴이 없어요. 일기를 작성하면 자동으로 분석됩니다 💪
             </div>
           ) : (
             patterns.map((p) => {
@@ -161,7 +161,7 @@ export default function MyExpressionsPage() {
           {/* 표현 목록 */}
           {expressions.length === 0 ? (
             <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
-              아직 학습 중인 표현이 없습니다. 일기를 쓰거나 새 학습에서 추가하세요!
+              아직 학습 중인 표현이 없어요. 새 학습 탭에서 추가해보세요 📖
             </div>
           ) : (
             expressions.map((e) => {

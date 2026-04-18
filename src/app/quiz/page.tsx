@@ -90,7 +90,7 @@ export default function QuizPage() {
       <div className="space-y-6">
         <h1 className="text-xl sm:text-2xl font-bold">퀴즈</h1>
         <div className="bg-white rounded-xl border p-8 text-center space-y-6">
-          <p className="text-gray-500">내 실수 패턴을 기반으로 퀴즈를 생성합니다.</p>
+          <p className="text-gray-500">내 실수 패턴과 일기를 기반으로 맞춤 퀴즈를 만들어 드려요 🧩</p>
 
           <label className="flex items-center justify-center gap-2 text-sm">
             <input
