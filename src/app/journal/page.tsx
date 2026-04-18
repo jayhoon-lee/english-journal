@@ -85,7 +85,7 @@ function JournalContent() {
   const [greeting, setGreeting] = useState<string>("");
   const [greetingLoading, setGreetingLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<
-    { type: string; emoji: string; title: string; description: string; example?: string }[]
+    { type: string; emoji: string; title: string; description: string; example?: string; entryId?: string; entryDate?: string; original?: string; corrected?: string }[]
   >([]);
 
   const supabase = createClient();
@@ -107,6 +107,10 @@ function JournalContent() {
       .then((res) => res.json())
       .then((data) => setSuggestions(data.suggestions || []))
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
   }, []);
 
   useEffect(() => {
@@ -302,12 +306,44 @@ function JournalContent() {
                     <div className="flex items-center gap-2 mb-1">
                       <span>{s.emoji}</span>
                       <span className="font-semibold">{s.title}</span>
+                      {s.entryDate && (
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(s.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-500 pl-6">{s.description}</p>
-                    {s.example && (
-                      <p className="text-xs mt-1 pl-6 py-1 px-2 bg-white/60 rounded text-gray-600 italic">
-                        예: &ldquo;{s.example}&rdquo;
-                      </p>
+                    {(s.original || s.corrected) && (
+                      <div className="mt-1.5 pl-6 py-2 px-3 bg-white/60 rounded space-y-1">
+                        {s.original && (
+                          <p className="text-xs text-gray-500">
+                            <span className="text-gray-400 mr-1">내가 쓴 표현:</span>
+                            <span className="bg-red-100 text-red-600 px-1 rounded">{s.original}</span>
+                          </p>
+                        )}
+                        {s.corrected && (
+                          <p className="text-xs text-gray-500">
+                            <span className="text-gray-400 mr-1">올바른 표현:</span>
+                            <span className="bg-green-100 text-green-700 px-1 rounded">{s.corrected}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {s.entryId && (
+                      <button
+                        onClick={() => {
+                          const entry = entries.find(e => e.id === s.entryId);
+                          if (entry) {
+                            setTab("history");
+                            setTimeout(() => setSelectedEntry(entry), 100);
+                          } else {
+                            setTab("history");
+                          }
+                        }}
+                        className="text-[10px] text-blue-500 hover:underline mt-1 pl-6"
+                      >
+                        해당 일기 보기 →
+                      </button>
                     )}
                   </div>
                 ))}

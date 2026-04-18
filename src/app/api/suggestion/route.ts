@@ -69,24 +69,65 @@ export async function GET() {
     .in("difficulty", targetDifficulty)
     .limit(2);
 
+  // 실수 패턴에 해당하는 일기 찾기
+  const { data: entriesWithFeedback } = await supabase
+    .from("journal_entries")
+    .select("id, date, original_text, corrected_text, feedback_json, created_at")
+    .eq("user_id", user.id)
+    .not("feedback_json", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
   const suggestions: {
     type: "mistake" | "expression";
     emoji: string;
     title: string;
     description: string;
     example?: string;
+    entryId?: string;
+    entryDate?: string;
+    original?: string;
+    corrected?: string;
   }[] = [];
 
-  // 실수 패턴 추가 (실제 예시 포함)
+  // 실수 패턴 추가 (실제 예시 + 일기 링크 포함)
   if (mistakes?.length) {
     for (const m of mistakes) {
       const lastExample = m.examples?.length ? m.examples[m.examples.length - 1] : null;
+
+      let entryId: string | undefined;
+      let entryDate: string | undefined;
+      let originalSnippet: string | undefined;
+      let correctedSnippet: string | undefined;
+
+      if (entriesWithFeedback?.length) {
+        for (const entry of entriesWithFeedback) {
+          try {
+            const fb = JSON.parse(entry.feedback_json);
+            const match = fb.mistakes?.find(
+              (mistake: { pattern_name: string }) => mistake.pattern_name === m.pattern_name
+            );
+            if (match) {
+              entryId = entry.id;
+              entryDate = entry.date;
+              originalSnippet = match.original;
+              correctedSnippet = match.corrected;
+              break;
+            }
+          } catch {}
+        }
+      }
+
       suggestions.push({
         type: "mistake",
         emoji: "⚠️",
         title: m.pattern_name,
         description: `${m.count}회 반복 — ${m.rule || "주의가 필요해요."}`,
         example: lastExample || undefined,
+        entryId,
+        entryDate,
+        original: originalSnippet,
+        corrected: correctedSnippet,
       });
     }
   }
