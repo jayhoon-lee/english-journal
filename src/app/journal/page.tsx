@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import CefrTooltip from "@/components/CefrTooltip";
 
 interface Scoring {
   vocabulary_score: number;
@@ -372,6 +373,9 @@ export default function JournalPage() {
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium text-gray-700">
                           {formatDate(entry.date)}
+                          <span className="ml-2 text-xs text-gray-400">
+                            {new Date(entry.created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
                         </span>
                         {score && (
                           <span className={`text-lg font-bold ${scoreColor(score.eqs)}`}>
@@ -388,7 +392,7 @@ export default function JournalPage() {
                           <span>문법 {score.grammar_score}</span>
                           <span>표현 {score.expression_score}</span>
                           <span>정확도 {score.accuracy_score}</span>
-                          {score.vocab_level && <span>CEFR {score.vocab_level}</span>}
+                          {score.vocab_level && <span>{score.vocab_level}</span>}
                         </div>
                       )}
                     </button>
@@ -433,7 +437,7 @@ function FeedbackView({
           ))}
         </div>
         <div className="mt-3 text-sm text-gray-500">
-          CEFR 레벨: <span className="font-semibold">{feedback.scoring.vocab_level}</span>
+          어휘 수준: <CefrTooltip level={feedback.scoring.vocab_level} />
         </div>
       </div>
 
@@ -514,7 +518,12 @@ function EntryDetail({
     <div className="space-y-4">
       <div className="bg-white rounded-xl border p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold">{formatDate(entry.date)}</h2>
+          <div>
+            <h2 className="font-semibold">{formatDate(entry.date)}</h2>
+            <span className="text-xs text-gray-400">
+              {new Date(entry.created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
           {score && (
             <span className={`text-2xl font-bold ${scoreColor(score.eqs)}`}>
               실력 {score.eqs}점
@@ -564,7 +573,7 @@ function EntryDetail({
 
       {score?.vocab_level && (
         <div className="text-center text-sm text-gray-400">
-          CEFR 레벨: {score.vocab_level}
+          어휘 수준: <CefrTooltip level={score.vocab_level} />
         </div>
       )}
     </div>
