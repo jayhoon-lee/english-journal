@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
+import { getProvider, streamAIResponse } from "@/lib/ai-provider";
 import { generateMockFeedback } from "@/lib/mock-feedback";
 import { NextResponse } from "next/server";
-
-const USE_MOCK = !process.env.ANTHROPIC_API_KEY;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -15,8 +14,9 @@ export async function POST(request: Request) {
   }
 
   const { text } = await request.json();
+  const provider = getProvider();
 
-  if (USE_MOCK) {
+  if (provider === "mock") {
     const mockFeedback = generateMockFeedback(text);
     const fullText = JSON.stringify(mockFeedback);
     const encoder = new TextEncoder();
@@ -47,10 +47,7 @@ export async function POST(request: Request) {
     });
   }
 
-  // Real Claude API
-  const Anthropic = (await import("@anthropic-ai/sdk")).default;
-  const anthropic = new Anthropic();
-
+  // Real AI (Claude or Gemini)
   const { data: patterns } = await supabase
     .from("mistake_patterns")
     .select("pattern_name, rule, count, status")
@@ -74,7 +71,7 @@ ${JSON.stringify(patterns || [])}
 [현재 학습 중인 표현]
 ${JSON.stringify(expressions || [])}
 
-다음 JSON 형식으로만 응답하세요:
+다음 JSON 형식으로만 응답하세요. JSON 외 다른 텍스트는 포함하지 마세요:
 {
   "corrected_text": "교정된 전문",
   "mistakes": [
@@ -104,37 +101,21 @@ ${JSON.stringify(expressions || [])}
   "feedback_summary": "전체 피드백 요약 (한글, 2-3문장)"
 }`;
 
-  const stream = anthropic.messages.stream({
-    model: "claude-sonnet-4-6-20250514",
-    max_tokens: 2000,
-    system: systemPrompt,
-    messages: [{ role: "user", content: text }],
-  });
-
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
-      for await (const event of stream) {
-        if (
-          event.type === "content_block_delta" &&
-          event.delta.type === "text_delta"
-        ) {
+      const fullText = await streamAIResponse(
+        systemPrompt,
+        text,
+        (chunk) => {
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
           );
         }
-      }
-
-      const finalMessage = await stream.finalMessage();
-      const fullText =
-        finalMessage.content[0].type === "text"
-          ? finalMessage.content[0].text
-          : "";
+      );
 
       controller.enqueue(
-        encoder.encode(
-          `data: ${JSON.stringify({ done: true, fullText })}\n\n`
-        )
+        encoder.encode(`data: ${JSON.stringify({ done: true, fullText })}\n\n`)
       );
       controller.close();
     },

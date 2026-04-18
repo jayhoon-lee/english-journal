@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { getProvider, generateAIResponse } from "@/lib/ai-provider";
 import { NextResponse } from "next/server";
-
-const USE_MOCK = !process.env.ANTHROPIC_API_KEY;
 
 const MOCK_QUESTIONS = [
   {
@@ -41,13 +40,11 @@ export async function POST(request: Request) {
   }
 
   const { includeTrap } = await request.json();
+  const provider = getProvider();
 
-  if (USE_MOCK) {
+  if (provider === "mock") {
     return NextResponse.json({ questions: MOCK_QUESTIONS, patterns: [] });
   }
-
-  const Anthropic = (await import("@anthropic-ai/sdk")).default;
-  const anthropic = new Anthropic();
 
   const { data: patterns } = await supabase
     .from("mistake_patterns")
@@ -73,7 +70,7 @@ export async function POST(request: Request) {
 사용자의 실수 패턴과 학습 표현을 기반으로 퀴즈 3문제를 만드세요.
 ${includeTrap ? "함정 문제(정답처럼 보이지만 틀린 보기)를 포함하세요." : ""}
 
-다음 JSON 배열로만 응답하세요:
+다음 JSON 배열로만 응답하세요. JSON 외 다른 텍스트는 포함하지 마세요:
 [
   {
     "quiz_type": "error_correction" | "fill_blank" | "expression_choice",
@@ -85,22 +82,14 @@ ${includeTrap ? "함정 문제(정답처럼 보이지만 틀린 보기)를 포�
   }
 ]`;
 
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6-20250514",
-    max_tokens: 1500,
-    system: systemPrompt,
-    messages: [
-      {
-        role: "user",
-        content: `[실수 패턴]\n${JSON.stringify(patterns)}\n\n[학습 표현]\n${JSON.stringify(expressions)}`,
-      },
-    ],
-  });
-
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
+  const text = await generateAIResponse(
+    systemPrompt,
+    `[실수 패턴]\n${JSON.stringify(patterns)}\n\n[학습 표현]\n${JSON.stringify(expressions)}`
+  );
 
   try {
-    const questions = JSON.parse(text);
+    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const questions = JSON.parse(cleaned);
     return NextResponse.json({ questions, patterns });
   } catch {
     return NextResponse.json({ error: "퀴즈 생성 실패" }, { status: 500 });

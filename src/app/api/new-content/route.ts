@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { getProvider, generateAIResponse } from "@/lib/ai-provider";
 import { NextResponse } from "next/server";
-
-const USE_MOCK = !process.env.ANTHROPIC_API_KEY;
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -43,12 +42,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (USE_MOCK) {
+  const provider = getProvider();
+
+  if (provider === "mock") {
     return NextResponse.json({ recommendations: MOCK_RECOMMENDATIONS });
   }
-
-  const Anthropic = (await import("@anthropic-ai/sdk")).default;
-  const anthropic = new Anthropic();
 
   const { data: stats } = await supabase
     .from("user_stats")
@@ -74,7 +72,7 @@ export async function POST(request: Request) {
 사용자의 레벨과 실수 패턴을 참고해서 새로운 학습 콘텐츠 3개를 추천하세요.
 사용자가 이미 알고 있는 표현은 제외하세요.
 
-다음 JSON 배열로만 응답하세요:
+다음 JSON 배열로만 응답하세요. JSON 외 다른 텍스트는 포함하지 마세요:
 [
   {
     "type": "expression" | "grammar" | "vocabulary" | "phrasal_verb",
@@ -87,22 +85,14 @@ export async function POST(request: Request) {
   }
 ]`;
 
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6-20250514",
-    max_tokens: 1500,
-    system: systemPrompt,
-    messages: [
-      {
-        role: "user",
-        content: `레벨: ${stats?.level || 1} (EQS: ${stats?.current_eqs || 0})\n\n[실수 패턴]\n${JSON.stringify(patterns || [])}\n\n[이미 학습 중인 표현 — 제외할 것]\n${JSON.stringify(existingList)}`,
-      },
-    ],
-  });
-
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
+  const text = await generateAIResponse(
+    systemPrompt,
+    `레벨: ${stats?.level || 1} (EQS: ${stats?.current_eqs || 0})\n\n[실수 패턴]\n${JSON.stringify(patterns || [])}\n\n[이미 학습 중인 표현 — 제외할 것]\n${JSON.stringify(existingList)}`
+  );
 
   try {
-    const recommendations = JSON.parse(text);
+    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const recommendations = JSON.parse(cleaned);
     return NextResponse.json({ recommendations });
   } catch {
     return NextResponse.json({ error: "추천 생성 실패" }, { status: 500 });
