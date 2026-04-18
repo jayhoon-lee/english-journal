@@ -81,6 +81,7 @@ function JournalContent() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [previousTab, setPreviousTab] = useState<"write" | "history">("write");
   const [userName, setUserName] = useState<string>("");
   const [greeting, setGreeting] = useState<string>("");
   const [greetingLoading, setGreetingLoading] = useState(true);
@@ -333,6 +334,7 @@ function JournalContent() {
                       <button
                         onClick={() => {
                           const entry = entries.find(e => e.id === s.entryId);
+                          setPreviousTab(tab);
                           if (entry) {
                             setTab("history");
                             setTimeout(() => setSelectedEntry(entry), 100);
@@ -390,7 +392,14 @@ function JournalContent() {
           )}
 
           {feedback && (
-            <FeedbackView feedback={feedback} saving={saving} saved={saved} scoreColor={scoreColor} />
+            <FeedbackView
+              feedback={feedback}
+              saving={saving}
+              saved={saved}
+              scoreColor={scoreColor}
+              originalText={text}
+              onFeedbackUpdate={(updated) => setFeedback(updated)}
+            />
           )}
         </>
       )}
@@ -401,10 +410,15 @@ function JournalContent() {
           {selectedEntry ? (
             <div className="space-y-4">
               <button
-                onClick={() => setSelectedEntry(null)}
+                onClick={() => {
+                  setSelectedEntry(null);
+                  if (previousTab === "write") {
+                    setTab("write");
+                  }
+                }}
                 className="text-sm text-blue-600 hover:underline flex items-center gap-1"
               >
-                ← 목록으로
+                ← {previousTab === "write" ? "돌아가기" : "목록으로"}
               </button>
               <EntryDetail entry={selectedEntry} scoreColor={scoreColor} formatDate={formatDate} />
             </div>
@@ -473,11 +487,15 @@ function FeedbackView({
   saving,
   saved,
   scoreColor,
+  originalText,
+  onFeedbackUpdate,
 }: {
   feedback: Feedback;
   saving: boolean;
   saved: boolean;
   scoreColor: (n: number) => string;
+  originalText: string;
+  onFeedbackUpdate: (updated: Feedback) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -560,6 +578,12 @@ function FeedbackView({
       <div className="text-center text-sm text-gray-400">
         {saving ? "저장 중..." : saved ? "✓ DB에 저장 완료" : ""}
       </div>
+
+      <FeedbackChat
+        originalText={originalText}
+        feedback={feedback}
+        onFeedbackUpdate={onFeedbackUpdate}
+      />
     </div>
   );
 }
@@ -837,5 +861,165 @@ function DiffHighlight({
         );
       })}
     </>
+  );
+}
+
+function FeedbackChat({
+  originalText,
+  feedback,
+  onFeedbackUpdate,
+}: {
+  originalText: string;
+  feedback: Feedback;
+  onFeedbackUpdate: (updated: Feedback) => void;
+}) {
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  async function handleSend() {
+    if (!input.trim() || loading) return;
+
+    const userMessage = input.trim();
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setLoading(true);
+
+    const res = await fetch("/api/journal/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        originalText,
+        feedback,
+        chatHistory: messages,
+        message: userMessage,
+      }),
+    });
+
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let streamedText = "";
+
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+    while (reader) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+
+      for (const line of lines) {
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.done) {
+            if (data.reply) {
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: "assistant", content: data.reply };
+                return updated;
+              });
+            }
+            if (data.updatedFeedback) {
+              onFeedbackUpdate(data.updatedFeedback);
+            }
+          } else {
+            streamedText += data.text;
+          }
+        } catch {}
+      }
+    }
+
+    setLoading(false);
+  }
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="w-full py-3 bg-white rounded-xl border text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors flex items-center justify-center gap-2"
+      >
+        <span>💬</span>
+        피드백에 대해 질문하거나 이의 제기하기
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="px-4 py-3 border-b bg-gray-50 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700">AI 코치와 대화</h3>
+          <p className="text-xs text-gray-400">교정이 맞는지 질문하거나, 다른 표현을 제안해보세요</p>
+        </div>
+        <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+      </div>
+
+      <div className="p-4 max-h-80 overflow-y-auto space-y-3">
+        {messages.length === 0 && (
+          <div className="text-center py-4 space-y-2">
+            <p className="text-xs text-gray-400">이런 질문을 해보세요:</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {[
+                "왜 이 표현이 더 자연스러워?",
+                "다른 표현도 가능하지 않아?",
+                "이 문법 규칙을 더 설명해줘",
+              ].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => { setInput(q); }}
+                  className="text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            <div
+              className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${
+                m.role === "user"
+                  ? "bg-blue-500 text-white rounded-br-sm"
+                  : "bg-gray-100 text-gray-700 rounded-bl-sm"
+              }`}
+            >
+              {m.content || (
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></span>
+                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></span>
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-3 border-t flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+          placeholder="질문을 입력하세요..."
+          className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={loading}
+        />
+        <button
+          onClick={handleSend}
+          disabled={!input.trim() || loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
+        >
+          전송
+        </button>
+      </div>
+    </div>
   );
 }
