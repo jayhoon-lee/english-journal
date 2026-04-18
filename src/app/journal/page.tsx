@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import CefrTooltip from "@/components/CefrTooltip";
 
@@ -54,9 +55,21 @@ interface JournalEntry {
 }
 
 export default function JournalPage() {
-  const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-  const initialTab = searchParams.get("tab") === "history" ? "history" : "write";
-  const [tab, setTab] = useState<"write" | "history">(initialTab);
+  return (
+    <Suspense fallback={<div className="text-center py-12 text-gray-400">로딩 중...</div>}>
+      <JournalContent />
+    </Suspense>
+  );
+}
+
+function JournalContent() {
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<"write" | "history">("write");
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    setTab(tabParam === "history" ? "history" : "write");
+  }, [searchParams]);
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [streamText, setStreamText] = useState("");
