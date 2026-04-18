@@ -315,17 +315,28 @@ export default function JournalPage() {
                 disabled={!text.trim() || streaming}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                {streaming ? "분석 중..." : "제출하기"}
+                {streaming ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  분석 중
+                </span>
+              ) : "제출하기"}
               </button>
             </div>
           </div>
 
           {streaming && !feedback && (
             <div className="bg-white rounded-xl border p-6">
-              <h2 className="font-semibold mb-3">AI 피드백 (스트리밍)</h2>
-              <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
-                {streamText}
-              </pre>
+              <div className="flex flex-col items-center justify-center py-8 gap-4">
+                <div className="relative w-12 h-12">
+                  <div className="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
+                  <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-700">일기를 분석하고 있어요</p>
+                  <p className="text-xs text-gray-400 mt-1">어휘, 문법, 표현, 정확도를 꼼꼼히 살펴보는 중...</p>
+                </div>
+              </div>
             </div>
           )}
 
