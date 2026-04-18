@@ -114,7 +114,7 @@ export default function StatusPage() {
     <div className="space-y-6">
       <h1 className="text-xl sm:text-2xl font-bold">레벨·순위</h1>
 
-      {/* 레벨 + EQS */}
+      {/* 레벨 + 영어 실력 점수 */}
       <div className="bg-white rounded-xl border p-6">
         <div className="flex items-center gap-4 mb-4">
           <span className="text-3xl sm:text-4xl">{currentLevel.emoji}</span>
@@ -123,7 +123,7 @@ export default function StatusPage() {
             <div className="text-xl font-bold">{currentLevel.name}</div>
           </div>
           <div className="ml-auto text-right">
-            <div className="text-sm text-gray-500">EQS</div>
+            <div className="text-sm text-gray-500">영어 실력 점수</div>
             <div className="text-2xl sm:text-3xl font-bold text-blue-600">{stats?.current_eqs || 0}</div>
           </div>
         </div>
@@ -187,10 +187,10 @@ export default function StatusPage() {
         </div>
       )}
 
-      {/* EQS 추이 라인 차트 */}
+      {/* 실력 점수 추이 라인 차트 */}
       {history.length > 1 && (
         <div className="bg-white rounded-xl border p-6">
-          <h2 className="font-semibold mb-4">EQS 성장 곡선</h2>
+          <h2 className="font-semibold mb-4">실력 점수 성장 곡선</h2>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={history}>
               <CartesianGrid strokeDasharray="3 3" />

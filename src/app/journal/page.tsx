@@ -368,7 +368,7 @@ export default function JournalPage() {
                         </span>
                         {score && (
                           <span className={`text-lg font-bold ${scoreColor(score.eqs)}`}>
-                            EQS {score.eqs}
+                            실력 {score.eqs}점
                           </span>
                         )}
                       </div>
@@ -410,14 +410,14 @@ function FeedbackView({
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border p-6">
-        <h2 className="font-semibold mb-4">EQS 채점 결과</h2>
+        <h2 className="font-semibold mb-4">영어 실력 채점 결과</h2>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4 text-center">
           {[
             { label: "어휘", score: feedback.scoring.vocabulary_score },
             { label: "문법", score: feedback.scoring.grammar_score },
             { label: "표현", score: feedback.scoring.expression_score },
             { label: "정확도", score: feedback.scoring.accuracy_score },
-            { label: "EQS 종합", score: feedback.scoring.eqs },
+            { label: "종합 점수", score: feedback.scoring.eqs },
           ].map(({ label, score }) => (
             <div key={label} className="p-3 bg-gray-50 rounded-lg">
               <div className="text-sm text-gray-500">{label}</div>
@@ -489,7 +489,7 @@ function EntryDetail({
           <h2 className="font-semibold">{formatDate(entry.date)}</h2>
           {score && (
             <span className={`text-2xl font-bold ${scoreColor(score.eqs)}`}>
-              EQS {score.eqs}
+              실력 {score.eqs}점
             </span>
           )}
         </div>
