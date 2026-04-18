@@ -9,6 +9,7 @@ const cefrData: Record<string, {
   toefl: string;
   ielts: string;
   teps: string;
+  opic: string;
 }> = {
   A1: {
     label: "입문",
@@ -17,6 +18,7 @@ const cefrData: Record<string, {
     toefl: "-",
     ielts: "-",
     teps: "241 이하",
+    opic: "NL~NM",
   },
   A2: {
     label: "초급",
@@ -25,6 +27,7 @@ const cefrData: Record<string, {
     toefl: "~56",
     ielts: "3.0~3.5",
     teps: "242~354",
+    opic: "NH~IL",
   },
   B1: {
     label: "중급",
@@ -33,6 +36,7 @@ const cefrData: Record<string, {
     toefl: "57~86",
     ielts: "4.0~5.0",
     teps: "355~451",
+    opic: "IM1~IM3",
   },
   B2: {
     label: "중상급",
@@ -41,6 +45,7 @@ const cefrData: Record<string, {
     toefl: "87~109",
     ielts: "5.5~6.5",
     teps: "452~555",
+    opic: "IH",
   },
   C1: {
     label: "고급",
@@ -49,6 +54,7 @@ const cefrData: Record<string, {
     toefl: "110~120",
     ielts: "7.0~8.0",
     teps: "556~625",
+    opic: "AL",
   },
   C2: {
     label: "원어민급",
@@ -57,6 +63,7 @@ const cefrData: Record<string, {
     toefl: "120",
     ielts: "8.5~9.0",
     teps: "626+",
+    opic: "AL",
   },
 };
 
@@ -120,6 +127,7 @@ export default function CefrTooltip({ level }: { level: string }) {
                   { name: "TOEFL iBT", value: data.toefl },
                   { name: "IELTS", value: data.ielts },
                   { name: "TEPS", value: data.teps },
+                  { name: "OPIc", value: data.opic },
                 ].map(({ name, value }) => (
                   <tr key={name} className="border-t border-gray-100">
                     <td className="py-1.5 text-gray-500">{name}</td>
