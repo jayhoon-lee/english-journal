@@ -67,6 +67,9 @@ export default function JournalPage() {
   const [userName, setUserName] = useState<string>("");
   const [greeting, setGreeting] = useState<string>("");
   const [greetingLoading, setGreetingLoading] = useState(true);
+  const [suggestions, setSuggestions] = useState<
+    { type: string; emoji: string; title: string; description: string }[]
+  >([]);
 
   const supabase = createClient();
 
@@ -82,6 +85,11 @@ export default function JournalPage() {
       .then((data) => setGreeting(data.greeting))
       .catch(() => {})
       .finally(() => setGreetingLoading(false));
+
+    fetch("/api/suggestion")
+      .then((res) => res.json())
+      .then((data) => setSuggestions(data.suggestions || []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -262,6 +270,28 @@ export default function JournalPage() {
                 {greetingLoading ? "..." : greeting || `${userName}님, 오늘도 영어로 하루를 기록해보세요 ✨`}
               </p>
             </div>
+            {suggestions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-400">오늘의 도전 과제</p>
+                {suggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-start gap-2 p-2.5 rounded-lg text-sm ${
+                      s.type === "mistake"
+                        ? "bg-amber-50 border border-amber-100"
+                        : "bg-blue-50 border border-blue-100"
+                    }`}
+                  >
+                    <span className="shrink-0">{s.emoji}</span>
+                    <div>
+                      <span className="font-semibold">{s.title}</span>
+                      <span className="text-gray-500 ml-1.5 text-xs">{s.description}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
