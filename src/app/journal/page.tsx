@@ -276,17 +276,17 @@ export default function JournalPage() {
                 {suggestions.map((s, i) => (
                   <div
                     key={i}
-                    className={`flex items-start gap-2 p-2.5 rounded-lg text-sm ${
+                    className={`p-3 rounded-lg text-sm ${
                       s.type === "mistake"
                         ? "bg-amber-50 border border-amber-100"
                         : "bg-blue-50 border border-blue-100"
                     }`}
                   >
-                    <span className="shrink-0">{s.emoji}</span>
-                    <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span>{s.emoji}</span>
                       <span className="font-semibold">{s.title}</span>
-                      <span className="text-gray-500 ml-1.5 text-xs">{s.description}</span>
                     </div>
+                    <p className="text-xs text-gray-500 pl-6">{s.description}</p>
                   </div>
                 ))}
               </div>
