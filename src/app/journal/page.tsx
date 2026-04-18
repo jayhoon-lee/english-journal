@@ -651,45 +651,68 @@ function DiffHighlight({
   corrected: string;
   mode: "original" | "corrected";
 }) {
-  if (original === corrected) return <>{original}</>;
+  if (original.trim() === corrected.trim()) {
+    return <>{mode === "original" ? original : corrected}</>;
+  }
 
   const origWords = original.split(/(\s+)/);
   const corrWords = corrected.split(/(\s+)/);
-  const maxLen = Math.max(origWords.length, corrWords.length);
 
-  const parts: { text: string; changed: boolean }[] = [];
-
-  if (mode === "original") {
-    for (let i = 0; i < origWords.length; i++) {
-      const changed = i < corrWords.length && origWords[i] !== corrWords[i];
-      parts.push({ text: origWords[i], changed });
-    }
-  } else {
-    for (let i = 0; i < corrWords.length; i++) {
-      const changed = i < origWords.length && origWords[i] !== corrWords[i];
-      const isNew = i >= origWords.length;
-      parts.push({ text: corrWords[i], changed: changed || isNew });
+  // LCS (Longest Common Subsequence) to find matching words
+  const lcs: number[][] = Array.from({ length: origWords.length + 1 }, () =>
+    Array(corrWords.length + 1).fill(0)
+  );
+  for (let i = 1; i <= origWords.length; i++) {
+    for (let j = 1; j <= corrWords.length; j++) {
+      if (origWords[i - 1] === corrWords[j - 1]) {
+        lcs[i][j] = lcs[i - 1][j - 1] + 1;
+      } else {
+        lcs[i][j] = Math.max(lcs[i - 1][j], lcs[i][j - 1]);
+      }
     }
   }
 
+  // Backtrack to find which words are common
+  const origMatch = new Set<number>();
+  const corrMatch = new Set<number>();
+  let i = origWords.length, j = corrWords.length;
+  while (i > 0 && j > 0) {
+    if (origWords[i - 1] === corrWords[j - 1]) {
+      origMatch.add(i - 1);
+      corrMatch.add(j - 1);
+      i--; j--;
+    } else if (lcs[i - 1][j] > lcs[i][j - 1]) {
+      i--;
+    } else {
+      j--;
+    }
+  }
+
+  const words = mode === "original" ? origWords : corrWords;
+  const matchSet = mode === "original" ? origMatch : corrMatch;
+
   return (
     <>
-      {parts.map((p, i) =>
-        p.changed ? (
+      {words.map((word, idx) => {
+        const isWhitespace = /^\s+$/.test(word);
+        if (isWhitespace) return <span key={idx}>{word}</span>;
+
+        const changed = !matchSet.has(idx);
+        return changed ? (
           <span
-            key={i}
+            key={idx}
             className={
               mode === "original"
                 ? "bg-red-100 text-red-600 px-0.5 rounded"
                 : "bg-green-100 text-green-700 px-0.5 rounded"
             }
           >
-            {p.text}
+            {word}
           </span>
         ) : (
-          <span key={i}>{p.text}</span>
-        )
-      )}
+          <span key={idx}>{word}</span>
+        );
+      })}
     </>
   );
 }
