@@ -65,6 +65,8 @@ export default function JournalPage() {
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [userName, setUserName] = useState<string>("");
+  const [greeting, setGreeting] = useState<string>("");
+  const [greetingLoading, setGreetingLoading] = useState(true);
 
   const supabase = createClient();
 
@@ -74,6 +76,12 @@ export default function JournalPage() {
         setUserName(user.email.split("@")[0]);
       }
     });
+
+    fetch("/api/greeting")
+      .then((res) => res.json())
+      .then((data) => setGreeting(data.greeting))
+      .catch(() => {})
+      .finally(() => setGreetingLoading(false));
   }, []);
 
   useEffect(() => {
@@ -251,7 +259,7 @@ export default function JournalPage() {
             <div className="space-y-1">
               <p className="text-xs text-gray-400">{todayStr}</p>
               <p className="text-sm text-gray-600">
-                {userName ? `${userName}님, ` : ""}{getGreeting()}
+                {greetingLoading ? "..." : greeting || `${userName}님, 오늘도 영어로 하루를 기록해보세요 ✨`}
               </p>
             </div>
             <textarea
