@@ -52,7 +52,9 @@ interface JournalEntry {
 }
 
 export default function JournalPage() {
-  const [tab, setTab] = useState<"write" | "history">("write");
+  const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const initialTab = searchParams.get("tab") === "history" ? "history" : "write";
+  const [tab, setTab] = useState<"write" | "history">(initialTab);
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [streamText, setStreamText] = useState("");

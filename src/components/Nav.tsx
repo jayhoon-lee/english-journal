@@ -68,7 +68,7 @@ export default function Nav() {
       {/* Desktop Nav */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 flex items-center justify-between h-14">
-          <Link href="/journal" className="text-lg font-bold text-blue-600 shrink-0">
+          <Link href="/journal?tab=write" className="text-lg font-bold text-blue-600 shrink-0">
             English Journal
           </Link>
 
