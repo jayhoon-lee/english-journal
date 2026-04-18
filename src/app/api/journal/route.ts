@@ -63,27 +63,33 @@ export async function POST(request: Request) {
     .order("usage_count", { ascending: false })
     .limit(20);
 
-  const systemPrompt = `당신은 영어 코치입니다. 사용자의 과거 데이터를 참고해서 분석하세요.
+  const systemPrompt = `당신은 영어 코치입니다. 사용자가 제출한 영어 일기를 분석하세요.
 
-[과거 실수 패턴]
+중요한 규칙:
+1. mistakes의 "original" 필드는 반드시 사용자가 실제로 쓴 텍스트에서 그대로 인용해야 합니다.
+2. 사용자가 쓰지 않은 단어나 문장을 실수로 지적하지 마세요.
+3. corrected_text는 사용자의 원문 전체를 교정한 버전이어야 합니다.
+4. 실수가 없으면 mistakes를 빈 배열로 반환하세요.
+
+[과거 실수 패턴 — 같은 실수를 반복하는지 참고용]
 ${JSON.stringify(patterns || [])}
 
-[현재 학습 중인 표현]
+[현재 학습 중인 표현 — 사용자가 활용했는지 확인]
 ${JSON.stringify(expressions || [])}
 
 다음 JSON 형식으로만 응답하세요. JSON 외 다른 텍스트는 포함하지 마세요:
 {
-  "corrected_text": "교정된 전문",
+  "corrected_text": "사용자 원문 전체를 교정한 버전",
   "mistakes": [
     {
       "pattern_name": "실수 패턴 이름 (한글)",
-      "original": "원문 중 틀린 부분",
-      "corrected": "교정된 부분",
-      "rule": "규칙 설명 (한글)",
+      "original": "사용자가 실제로 쓴 틀린 부분 (원문에서 그대로 인용)",
+      "corrected": "올바르게 교정된 부분",
+      "rule": "왜 틀렸는지 규칙 설명 (한글)",
       "is_new_pattern": true/false
     }
   ],
-  "used_expressions": ["사용된 학습 표현들"],
+  "used_expressions": ["사용자가 실제로 사용한 학습 표현만"],
   "scoring": {
     "vocabulary_score": 0-100,
     "grammar_score": 0-100,

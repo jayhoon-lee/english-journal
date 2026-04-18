@@ -1,41 +1,77 @@
 export function generateMockFeedback(text: string) {
   const wordCount = text.split(/\s+/).length;
-  const hasErrors = text.toLowerCase() !== text;
+  const corrected = text
+    .replace(/\bi\b/g, "I")
+    .replace(/dont/g, "don't")
+    .replace(/im\b/gi, "I'm")
+    .replace(/cant/g, "can't")
+    .replace(/wont/g, "won't");
+
+  const mistakes: {
+    pattern_name: string;
+    original: string;
+    corrected: string;
+    rule: string;
+    is_new_pattern: boolean;
+  }[] = [];
+
+  if (/\bi\b/.test(text)) {
+    const match = text.match(/.{0,10}\bi\b.{0,10}/);
+    if (match) {
+      mistakes.push({
+        pattern_name: "대문자 I 누락",
+        original: match[0].trim(),
+        corrected: match[0].trim().replace(/\bi\b/, "I"),
+        rule: "1인칭 대명사 'I'는 항상 대문자로 씁니다.",
+        is_new_pattern: true,
+      });
+    }
+  }
+
+  if (/dont|cant|wont/.test(text)) {
+    const match = text.match(/.{0,10}(dont|cant|wont).{0,10}/);
+    if (match) {
+      const word = match[1];
+      const fixed = word === "dont" ? "don't" : word === "cant" ? "can't" : "won't";
+      mistakes.push({
+        pattern_name: "축약형 어포스트로피 누락",
+        original: match[0].trim(),
+        corrected: match[0].trim().replace(word, fixed),
+        rule: `축약형에는 어포스트로피가 필요합니다: ${word} → ${fixed}`,
+        is_new_pattern: true,
+      });
+    }
+  }
+
+  if (mistakes.length === 0) {
+    mistakes.push({
+      pattern_name: "Mock 모드",
+      original: text.slice(0, 30),
+      corrected: text.slice(0, 30),
+      rule: "실제 AI 연동 시 정확한 실수 분석이 제공됩니다.",
+      is_new_pattern: false,
+    });
+  }
 
   return {
-    corrected_text: text.replace(/i /g, "I ").replace(/dont/g, "don't").replace(/im /g, "I'm "),
-    mistakes: [
-      {
-        pattern_name: "관사 누락",
-        original: "I went to store",
-        corrected: "I went to the store",
-        rule: "특정한 장소를 가리킬 때는 정관사 'the'를 사용합니다.",
-        is_new_pattern: true,
-      },
-      {
-        pattern_name: "시제 불일치",
-        original: "Yesterday I go",
-        corrected: "Yesterday I went",
-        rule: "과거를 나타내는 부사(yesterday)와 함께 과거 시제를 사용합니다.",
-        is_new_pattern: false,
-      },
-    ],
-    used_expressions: ["get things done", "on the other hand"],
+    corrected_text: corrected,
+    mistakes,
+    used_expressions: [],
     scoring: {
       vocabulary_score: Math.min(100, 40 + wordCount * 2),
-      grammar_score: 55,
+      grammar_score: Math.min(100, 45 + wordCount),
       expression_score: Math.min(100, 35 + wordCount),
-      accuracy_score: 60,
-      eqs: Math.min(100, 48 + Math.floor(wordCount / 2)),
+      accuracy_score: Math.min(100, 50 + wordCount),
+      eqs: Math.min(100, 43 + Math.floor(wordCount / 2)),
       vocab_level: wordCount > 50 ? "B1" : "A2",
       scoring_reason: {
-        vocabulary: "기본적인 일상 어휘를 사용했습니다. 좀 더 다양한 표현을 시도해보세요.",
-        grammar: "과거 시제와 관사 사용에 주의가 필요합니다.",
-        expression: "학습한 표현을 일부 활용했습니다.",
-        accuracy: "문법적 오류가 일부 발견되었습니다.",
+        vocabulary: "사용된 어휘 수준을 분석했습니다.",
+        grammar: "문법 구조를 분석했습니다.",
+        expression: "사용된 표현의 다양성을 평가했습니다.",
+        accuracy: "전체적인 정확도를 평가했습니다.",
       },
     },
     feedback_summary:
-      "전반적으로 일상을 잘 표현하고 있지만, 관사와 시제 사용에 좀 더 신경 쓰면 좋겠습니다. 학습한 표현을 적극 활용한 점은 좋습니다!",
+      "Mock 모드로 동작 중입니다. AI API를 연동하면 실제 일기 내용에 맞는 상세한 피드백이 제공됩니다.",
   };
 }
