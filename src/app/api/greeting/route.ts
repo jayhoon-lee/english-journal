@@ -13,6 +13,18 @@ export async function GET() {
   }
 
   const userName = user.email?.split("@")[0] || "";
+  const today = new Date().toISOString().split("T")[0];
+
+  // 캐시 확인: 오늘 이미 생성된 인사말이 있으면 바로 반환
+  const { data: stats } = await supabase
+    .from("user_stats")
+    .select("cached_greeting, greeting_date, current_streak, total_entries")
+    .eq("user_id", user.id)
+    .single();
+
+  if (stats?.cached_greeting && stats?.greeting_date === today) {
+    return NextResponse.json({ greeting: stats.cached_greeting });
+  }
 
   const { data: lastEntry } = await supabase
     .from("journal_entries")
@@ -22,30 +34,23 @@ export async function GET() {
     .limit(1)
     .single();
 
-  const { data: stats } = await supabase
-    .from("user_stats")
-    .select("current_streak, total_entries")
-    .eq("user_id", user.id)
-    .single();
-
   if (!lastEntry) {
-    return NextResponse.json({
-      greeting: `${userName}님, 첫 영어 일기를 써볼까요? 부담 없이 짧게 시작해도 좋아요 ✨`,
-    });
+    const greeting = `${userName}님, 첫 영어 일기를 써볼까요? 부담 없이 짧게 시작해도 좋아요 ✨`;
+    await cacheGreeting(supabase, user.id, greeting, today);
+    return NextResponse.json({ greeting });
   }
 
   const provider = getProvider();
 
   if (provider === "mock") {
-    return NextResponse.json({
-      greeting: `${userName}님, 다시 만나서 반가워요! 오늘은 어떤 이야기를 들려줄 건가요? 😊`,
-    });
+    const greeting = `${userName}님, 다시 만나서 반가워요! 오늘은 어떤 이야기를 들려줄 건가요? 😊`;
+    await cacheGreeting(supabase, user.id, greeting, today);
+    return NextResponse.json({ greeting });
   }
 
-  const today = new Date();
-  const hour = today.getHours();
+  const hour = new Date().getHours();
   const timeContext = hour < 12 ? "아침" : hour < 18 ? "오후" : "저녁";
-  const dayOfWeek = today.toLocaleDateString("ko-KR", { weekday: "long" });
+  const dayOfWeek = new Date().toLocaleDateString("ko-KR", { weekday: "long" });
 
   const prompt = `당신은 영어 학습 앱의 친근한 코치입니다.
 사용자의 마지막 일기 내용을 참고해서, 오늘의 인사말을 한 문장으로 만들어주세요.
@@ -65,14 +70,26 @@ export async function GET() {
 마지막 피드백: ${lastEntry.coach_feedback || "없음"}`;
 
   try {
-    const greeting = await generateAIResponse(prompt, userMsg);
-    const cleaned = greeting.replace(/^["']|["']$/g, "").trim();
-    return NextResponse.json({
-      greeting: `${userName}님, ${cleaned}`,
-    });
+    const raw = await generateAIResponse(prompt, userMsg);
+    const cleaned = raw.replace(/^["']|["']$/g, "").trim();
+    const greeting = `${userName}님, ${cleaned}`;
+    await cacheGreeting(supabase, user.id, greeting, today);
+    return NextResponse.json({ greeting });
   } catch {
-    return NextResponse.json({
-      greeting: `${userName}님, 다시 만나서 반가워요! 오늘도 함께 영어 연습해요 😊`,
-    });
+    const fallback = `${userName}님, 다시 만나서 반가워요! 오늘도 함께 영어 연습해요 😊`;
+    await cacheGreeting(supabase, user.id, fallback, today);
+    return NextResponse.json({ greeting: fallback });
   }
+}
+
+async function cacheGreeting(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  greeting: string,
+  date: string
+) {
+  await supabase
+    .from("user_stats")
+    .update({ cached_greeting: greeting, greeting_date: date })
+    .eq("user_id", userId);
 }

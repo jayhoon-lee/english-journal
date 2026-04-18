@@ -76,6 +76,7 @@ function JournalContent() {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   // 기록 탭
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -136,6 +137,7 @@ function JournalContent() {
     setStreamText("");
     setFeedback(null);
     setSaved(false);
+    setError("");
 
     const res = await fetch("/api/journal", {
       method: "POST",
@@ -156,7 +158,11 @@ function JournalContent() {
 
       for (const line of lines) {
         const data = JSON.parse(line.slice(6));
-        if (data.done) {
+        if (data.error) {
+          setError(data.error);
+          setStreaming(false);
+          return;
+        } else if (data.done) {
           fullText = data.fullText;
         } else {
           setStreamText((prev) => prev + data.text);
@@ -375,6 +381,18 @@ function JournalContent() {
               </button>
             </div>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+              <p className="text-sm text-red-600">{error}</p>
+              <button
+                onClick={() => setError("")}
+                className="mt-2 text-xs text-red-400 hover:underline"
+              >
+                닫기
+              </button>
+            </div>
+          )}
 
           {streaming && !feedback && (
             <div className="bg-white rounded-xl border p-6">

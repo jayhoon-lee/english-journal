@@ -110,24 +110,35 @@ ${JSON.stringify(expressions || [])}
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
-      const rawText = await streamAIResponse(
-        systemPrompt,
-        text,
-        (chunk) => {
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
-          );
-        }
-      );
+      try {
+        const rawText = await streamAIResponse(
+          systemPrompt,
+          text,
+          (chunk) => {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
+            );
+          }
+        );
 
-      const fullText = rawText
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
+        const fullText = rawText
+          .replace(/```json\n?/g, "")
+          .replace(/```\n?/g, "")
+          .trim();
 
-      controller.enqueue(
-        encoder.encode(`data: ${JSON.stringify({ done: true, fullText })}\n\n`)
-      );
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ done: true, fullText })}\n\n`)
+        );
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "AI 분석 중 오류가 발생했습니다.";
+        const isQuota = errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("Too Many");
+        const userError = isQuota
+          ? "API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요."
+          : "AI 분석 중 오류가 발생했습니다. 다시 시도해주세요.";
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ error: userError })}\n\n`)
+        );
+      }
       controller.close();
     },
   });
