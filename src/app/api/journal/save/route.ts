@@ -29,15 +29,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: entryError.message }, { status: 500 });
   }
 
-  // 2. entry_scores 저장
+  // 2. entry_scores 저장 (종합 점수는 서버에서 직접 계산)
+  const v = feedback.scoring.vocabulary_score || 0;
+  const g = feedback.scoring.grammar_score || 0;
+  const e = feedback.scoring.expression_score || 0;
+  const a = feedback.scoring.accuracy_score || 0;
+  const calculatedEqs = Math.round((v + g + e + a) / 4);
+
   await supabase.from("entry_scores").insert({
     user_id: user.id,
     entry_id: entry.id,
-    vocabulary_score: feedback.scoring.vocabulary_score,
-    grammar_score: feedback.scoring.grammar_score,
-    expression_score: feedback.scoring.expression_score,
-    accuracy_score: feedback.scoring.accuracy_score,
-    eqs: feedback.scoring.eqs,
+    vocabulary_score: v,
+    grammar_score: g,
+    expression_score: e,
+    accuracy_score: a,
+    eqs: calculatedEqs,
     vocab_level: feedback.scoring.vocab_level,
   });
 

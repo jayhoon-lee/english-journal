@@ -534,13 +534,17 @@ function EntryDetail({
 
       <div className="bg-white rounded-xl border p-6">
         <h3 className="font-semibold mb-2 text-sm text-gray-500">원문</h3>
-        <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{entry.original_text}</p>
+        <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+          <DiffHighlight original={entry.original_text} corrected={entry.corrected_text || entry.original_text} mode="original" />
+        </p>
       </div>
 
       {entry.corrected_text && (
         <div className="bg-white rounded-xl border p-6">
           <h3 className="font-semibold mb-2 text-sm text-gray-500">교정본</h3>
-          <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{entry.corrected_text}</p>
+          <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+            <DiffHighlight original={entry.original_text} corrected={entry.corrected_text} mode="corrected" />
+          </p>
         </div>
       )}
 
@@ -614,6 +618,58 @@ function HighlightedOriginal({
       {parts.map((p, i) =>
         p.className ? (
           <span key={i} className={p.className}>{p.text}</span>
+        ) : (
+          <span key={i}>{p.text}</span>
+        )
+      )}
+    </>
+  );
+}
+
+function DiffHighlight({
+  original,
+  corrected,
+  mode,
+}: {
+  original: string;
+  corrected: string;
+  mode: "original" | "corrected";
+}) {
+  if (original === corrected) return <>{original}</>;
+
+  const origWords = original.split(/(\s+)/);
+  const corrWords = corrected.split(/(\s+)/);
+  const maxLen = Math.max(origWords.length, corrWords.length);
+
+  const parts: { text: string; changed: boolean }[] = [];
+
+  if (mode === "original") {
+    for (let i = 0; i < origWords.length; i++) {
+      const changed = i < corrWords.length && origWords[i] !== corrWords[i];
+      parts.push({ text: origWords[i], changed });
+    }
+  } else {
+    for (let i = 0; i < corrWords.length; i++) {
+      const changed = i < origWords.length && origWords[i] !== corrWords[i];
+      const isNew = i >= origWords.length;
+      parts.push({ text: corrWords[i], changed: changed || isNew });
+    }
+  }
+
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.changed ? (
+          <span
+            key={i}
+            className={
+              mode === "original"
+                ? "bg-red-100 text-red-600 px-0.5 rounded"
+                : "bg-green-100 text-green-700 px-0.5 rounded"
+            }
+          >
+            {p.text}
+          </span>
         ) : (
           <span key={i}>{p.text}</span>
         )
