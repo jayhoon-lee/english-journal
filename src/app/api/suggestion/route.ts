@@ -74,20 +74,19 @@ export async function GET() {
     emoji: string;
     title: string;
     description: string;
+    example?: string;
   }[] = [];
 
   // 실수 패턴 추가 (실제 예시 포함)
   if (mistakes?.length) {
     for (const m of mistakes) {
       const lastExample = m.examples?.length ? m.examples[m.examples.length - 1] : null;
-      const exampleText = lastExample
-        ? ` 예: "${lastExample}"`
-        : "";
       suggestions.push({
         type: "mistake",
         emoji: "⚠️",
         title: m.pattern_name,
-        description: `${m.count}회 반복 — ${m.rule || "주의가 필요해요."}${exampleText}`,
+        description: `${m.count}회 반복 — ${m.rule || "주의가 필요해요."}`,
+        example: lastExample || undefined,
       });
     }
   }

@@ -68,7 +68,7 @@ export default function JournalPage() {
   const [greeting, setGreeting] = useState<string>("");
   const [greetingLoading, setGreetingLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<
-    { type: string; emoji: string; title: string; description: string }[]
+    { type: string; emoji: string; title: string; description: string; example?: string }[]
   >([]);
 
   const supabase = createClient();
@@ -287,6 +287,11 @@ export default function JournalPage() {
                       <span className="font-semibold">{s.title}</span>
                     </div>
                     <p className="text-xs text-gray-500 pl-6">{s.description}</p>
+                    {s.example && (
+                      <p className="text-xs mt-1 pl-6 py-1 px-2 bg-white/60 rounded text-gray-600 italic">
+                        예: &ldquo;{s.example}&rdquo;
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
