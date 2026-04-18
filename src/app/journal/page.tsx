@@ -431,13 +431,34 @@ function FeedbackView({
       </div>
 
       <div className="bg-white rounded-xl border p-6">
-        <h2 className="font-semibold mb-3">교정본</h2>
-        <p className="text-gray-700 leading-relaxed">{feedback.corrected_text}</p>
+        <h2 className="font-semibold mb-3">교정 비교</h2>
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-medium text-gray-400 mb-1">원문</p>
+            <p className="text-gray-500 leading-relaxed">
+              <HighlightedOriginal
+                text={feedback.corrected_text}
+                mistakes={feedback.mistakes}
+                isOriginal={true}
+              />
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-400 mb-1">교정본</p>
+            <p className="text-gray-700 leading-relaxed">
+              <HighlightedOriginal
+                text={feedback.corrected_text}
+                mistakes={feedback.mistakes}
+                isOriginal={false}
+              />
+            </p>
+          </div>
+        </div>
       </div>
 
       {feedback.mistakes.length > 0 && (
         <div className="bg-white rounded-xl border p-6">
-          <h2 className="font-semibold mb-3">실수 패턴</h2>
+          <h2 className="font-semibold mb-3">실수 상세</h2>
           <div className="space-y-3">
             {feedback.mistakes.map((m, i) => (
               <div key={i} className="p-3 bg-red-50 rounded-lg">
@@ -448,9 +469,9 @@ function FeedbackView({
                   )}
                 </div>
                 <div className="text-sm text-gray-600">
-                  <span className="line-through text-red-400">{m.original}</span>
-                  {" → "}
-                  <span className="text-green-600">{m.corrected}</span>
+                  <span className="bg-red-100 text-red-600 px-1 rounded line-through">{m.original}</span>
+                  <span className="mx-1.5 text-gray-400">→</span>
+                  <span className="bg-green-100 text-green-700 px-1 rounded">{m.corrected}</span>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{m.rule}</p>
               </div>
@@ -536,5 +557,67 @@ function EntryDetail({
         </div>
       )}
     </div>
+  );
+}
+
+function HighlightedOriginal({
+  text,
+  mistakes,
+  isOriginal,
+}: {
+  text: string;
+  mistakes: Mistake[];
+  isOriginal: boolean;
+}) {
+  if (!mistakes.length) return <>{text}</>;
+
+  let result = text;
+  const highlights: { search: string; className: string }[] = [];
+
+  for (const m of mistakes) {
+    if (isOriginal) {
+      highlights.push({
+        search: m.original,
+        className: "bg-red-100 text-red-600 px-0.5 rounded",
+      });
+    } else {
+      highlights.push({
+        search: m.corrected,
+        className: "bg-green-100 text-green-700 px-0.5 rounded",
+      });
+    }
+  }
+
+  const parts: { text: string; className?: string }[] = [];
+  let remaining = isOriginal
+    ? text.replace(new RegExp(mistakes.map(m => m.corrected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g'), (match) => {
+        const mistake = mistakes.find(m => m.corrected === match);
+        return mistake?.original || match;
+      })
+    : text;
+
+  for (const h of highlights) {
+    const idx = remaining.toLowerCase().indexOf(h.search.toLowerCase());
+    if (idx === -1) continue;
+
+    if (idx > 0) parts.push({ text: remaining.slice(0, idx) });
+    parts.push({ text: remaining.slice(idx, idx + h.search.length), className: h.className });
+    remaining = remaining.slice(idx + h.search.length);
+  }
+
+  if (remaining) parts.push({ text: remaining });
+
+  if (parts.length === 0) return <>{isOriginal ? text : text}</>;
+
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.className ? (
+          <span key={i} className={p.className}>{p.text}</span>
+        ) : (
+          <span key={i}>{p.text}</span>
+        )
+      )}
+    </>
   );
 }
