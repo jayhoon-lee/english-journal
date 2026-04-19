@@ -12,6 +12,20 @@ interface Recommendation {
   recommendation_reason: string;
 }
 
+interface HighlightWord {
+  word: string;
+  meaning: string;
+  type: string;
+}
+
+interface Article {
+  title: string;
+  content: string;
+  level: string;
+  topic: string;
+  highlightWords: HighlightWord[];
+}
+
 const typeLabel: Record<string, string> = {
   expression: "표현",
   grammar: "문법",
@@ -26,6 +40,247 @@ const diffLabel: Record<string, { text: string; color: string }> = {
 };
 
 export default function NewContentPage() {
+  const [tab, setTab] = useState<"expressions" | "reading">("reading");
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold">새 학습</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setTab("reading")}
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              tab === "reading"
+                ? "bg-blue-50 text-blue-700 border border-blue-200"
+                : "bg-white text-gray-600 border hover:bg-gray-50"
+            }`}
+          >
+            읽기 학습
+          </button>
+          <button
+            onClick={() => setTab("expressions")}
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              tab === "expressions"
+                ? "bg-blue-50 text-blue-700 border border-blue-200"
+                : "bg-white text-gray-600 border hover:bg-gray-50"
+            }`}
+          >
+            추천 표현
+          </button>
+        </div>
+      </div>
+
+      {tab === "reading" ? <ReadingTab /> : <ExpressionsTab />}
+    </div>
+  );
+}
+
+function ReadingTab() {
+  const [article, setArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [hintMode, setHintMode] = useState(false);
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [topic, setTopic] = useState("");
+  const [error, setError] = useState("");
+
+  async function loadArticle() {
+    setLoading(true);
+    setError("");
+    setArticle(null);
+    setHintMode(false);
+
+    const res = await fetch("/api/article", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic: topic || undefined }),
+    });
+
+    const data = await res.json();
+    if (data.error) {
+      setError(data.error);
+    } else {
+      setArticle(data.article);
+    }
+    setLoading(false);
+  }
+
+  function renderArticleContent(content: string, highlights: HighlightWord[]) {
+    if (!hintMode) {
+      return content.split("\n\n").map((para, i) => (
+        <p key={i} className="mb-4 leading-relaxed">{para}</p>
+      ));
+    }
+
+    return content.split("\n\n").map((para, pIdx) => {
+      let result = para;
+      const parts: (string | { word: string; highlight: HighlightWord })[] = [];
+      let remaining = para;
+
+      const sortedHighlights = [...highlights].sort((a, b) => b.word.length - a.word.length);
+
+      for (const h of sortedHighlights) {
+        const regex = new RegExp(`(${h.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+        const idx = remaining.search(regex);
+        if (idx === -1) continue;
+
+        if (idx > 0) parts.push(remaining.slice(0, idx));
+        const matchedWord = remaining.slice(idx, idx + h.word.length);
+        parts.push({ word: matchedWord, highlight: h });
+        remaining = remaining.slice(idx + h.word.length);
+      }
+      if (remaining) parts.push(remaining);
+
+      if (parts.length === 0) parts.push(para);
+
+      return (
+        <p key={pIdx} className="mb-4 leading-relaxed">
+          {parts.map((part, i) => {
+            if (typeof part === "string") return <span key={i}>{part}</span>;
+            const isActive = activeTooltip === `${pIdx}-${i}`;
+            return (
+              <span key={i} className="relative inline">
+                <span
+                  onClick={() => setActiveTooltip(isActive ? null : `${pIdx}-${i}`)}
+                  className={`cursor-pointer px-0.5 rounded transition-colors ${
+                    part.highlight.type === "mistake"
+                      ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                      : "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                  }`}
+                >
+                  {part.word}
+                </span>
+                {isActive && (
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-48 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 z-10 text-center">
+                    <span className="font-semibold">{part.highlight.word}</span>
+                    <br />
+                    {part.highlight.meaning}
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-800 rotate-45"></span>
+                  </span>
+                )}
+              </span>
+            );
+          })}
+        </p>
+      );
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          placeholder="주제를 입력하세요 (선택사항)"
+          className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          onClick={loadArticle}
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
+        >
+          {loading ? "생성 중..." : article ? "다른 글 보기" : "아티클 생성"}
+        </button>
+      </div>
+
+      {!article && !loading && !error && (
+        <div className="bg-white rounded-xl border p-8 text-center text-gray-400 space-y-3">
+          <div className="text-3xl">📖</div>
+          <p>내 수준에 맞는 영어 아티클을 생성해드려요.</p>
+          <p className="text-xs">학습 중인 표현이 자연스럽게 포함됩니다!</p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {["일상", "여행", "음식", "기술", "취미"].map((t) => (
+              <button
+                key={t}
+                onClick={() => { setTopic(t); }}
+                className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors"
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loading && (
+        <div className="bg-white rounded-xl border p-12 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative w-12 h-12">
+              <div className="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-sm text-gray-500">맞춤 아티클을 작성하고 있어요...</p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
+      {article && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold">{article.title}</h2>
+                <div className="flex gap-2 mt-1">
+                  <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                    CEFR {article.level}
+                  </span>
+                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                    {article.topic}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setHintMode(!hintMode)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  hintMode
+                    ? "bg-amber-100 text-amber-700 border border-amber-200"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {hintMode ? "💡 힌트 ON" : "💡 힌트 OFF"}
+              </button>
+            </div>
+
+            <div className="text-gray-700 text-[15px]">
+              {renderArticleContent(article.content, article.highlightWords)}
+            </div>
+          </div>
+
+          {hintMode && article.highlightWords.length > 0 && (
+            <div className="bg-white rounded-xl border p-5">
+              <h3 className="text-sm font-semibold text-gray-500 mb-3">이 글에 포함된 학습 표현</h3>
+              <div className="space-y-2">
+                {article.highlightWords.map((h, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm">
+                    <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${
+                      h.type === "mistake"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-blue-100 text-blue-700"
+                    }`}>
+                      {h.type === "mistake" ? "실수" : "표현"}
+                    </span>
+                    <span className="font-medium">{h.word}</span>
+                    <span className="text-gray-400">—</span>
+                    <span className="text-gray-600">{h.meaning}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExpressionsTab() {
   const [items, setItems] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(false);
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
@@ -58,9 +313,8 @@ export default function NewContentPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl sm:text-2xl font-bold">새 학습</h1>
+    <div className="space-y-4">
+      <div className="flex justify-end">
         <button
           onClick={loadRecommendations}
           disabled={loading}
