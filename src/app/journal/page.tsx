@@ -293,9 +293,9 @@ function JournalContent() {
       {tab === "write" && (
         <>
           <div className="bg-white rounded-xl border p-6 space-y-4">
-            <div className="space-y-1">
-              <p className="text-xs text-gray-400">{todayStr}</p>
-              <p className="text-sm text-gray-600">
+            <div className="space-y-2">
+              <p className="text-lg font-semibold text-gray-800">{todayStr}</p>
+              <p className="text-sm text-gray-500">
                 {greetingLoading ? "..." : greeting || `${userName}님, 오늘도 영어로 하루를 기록해보세요 ✨`}
               </p>
             </div>
