@@ -64,6 +64,7 @@ export default function CoachSidebar() {
 
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
+      let streamedText = "";
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -84,6 +85,16 @@ export default function CoachSidebar() {
               if (data.savedExpressions?.length > 0 || data.expressionsChanged) {
                 window.dispatchEvent(new CustomEvent("expressions-updated"));
               }
+            } else if (data.text) {
+              streamedText += data.text;
+              const displayText = streamedText
+                .replace(/===EXPRESSIONS===[\s\S]*/g, "")
+                .trim();
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: "assistant", content: displayText };
+                return updated;
+              });
             }
           } catch {}
         }
