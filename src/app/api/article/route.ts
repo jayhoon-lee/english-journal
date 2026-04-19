@@ -90,7 +90,7 @@ export async function POST(request: Request) {
   ]
 }`;
 
-  const userMsg = `사용자 레벨: CEFR ${targetCefr} (Lv.${userLevel})
+  const userMsg = `사용자 레벨: CEFR ${targetCefr} (Lv.${adjustedLevel})
 ${topic ? `원하는 주제: ${topic}` : "주제: 자유 (일상, 여행, 취미 등 흥미로운 주제)"}
 
 [사용자가 학습 중인 표현 — 이 중 3~5개를 자연스럽게 포함, source를 "user"로 표시]
