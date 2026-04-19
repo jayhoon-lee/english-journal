@@ -29,25 +29,47 @@ export async function POST(request: Request) {
 
   const { data: patterns } = await supabase
     .from("mistake_patterns")
-    .select("pattern_name, rule")
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .limit(5);
-
-  const { data: expressions } = await supabase
-    .from("expressions")
-    .select("expression, meaning")
+    .select("pattern_name, rule, count, consecutive_clean, status, examples")
     .eq("user_id", user.id)
     .limit(10);
 
+  const { data: expressions } = await supabase
+    .from("expressions")
+    .select("expression, meaning, usage_count, status")
+    .eq("user_id", user.id)
+    .limit(20);
+
   const userName = user.email?.split("@")[0] || "";
+
+  const statusLabel: Record<string, string> = {
+    active: "반복 실수 중",
+    improving: "개선 중 (연속 클린 2회+)",
+    cleared: "극복 완료!",
+  };
+  const exprStatusLabel: Record<string, string> = {
+    active: "잘 사용 중",
+    dormant: "오래 안 씀 (2주+)",
+    forgotten: "잊혀가는 중 (1달+)",
+  };
+
+  const patternInfo = (patterns || []).map(p =>
+    `- "${p.pattern_name}": ${statusLabel[p.status] || p.status}, ${p.count}회 실수, 연속클린 ${p.consecutive_clean}회${p.examples?.length ? `, 최근 실수: "${p.examples[p.examples.length - 1]}"` : ""}`
+  ).join("\n");
+
+  const exprInfo = (expressions || []).map(e =>
+    `- "${e.expression}" (${e.meaning}): ${e.usage_count === 0 ? "아직 미사용" : `${e.usage_count}회 사용`}, 상태: ${e.usage_count === 0 ? "미사용" : (exprStatusLabel[e.status] || e.status)}`
+  ).join("\n");
 
   const systemPrompt = `당신은 "${userName}"의 개인 영어 코치입니다. 항상 친근하고 격려하는 톤으로 한국어로 대화하세요.
 
 사용자 정보:
 - 레벨: ${stats?.level || 1} (영어 실력 점수: ${stats?.current_eqs || 0})
-- 주요 실수 패턴: ${JSON.stringify(patterns?.map(p => p.pattern_name) || [])}
-- 학습 중인 표현: ${JSON.stringify(expressions?.map(e => `${e.expression} (${e.meaning})`) || [])}
+
+[사용자의 실수 패턴 관리 현황]
+${patternInfo || "없음"}
+
+[사용자의 학습 표현 관리 현황]
+${exprInfo || "없음"}
 
 ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pageContext}` : ""}
 
@@ -56,7 +78,11 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
 2. 예문을 들 때는 사용자 수준에 맞춰주세요.
 3. 사용자의 실수 패턴을 알고 있으니, 관련 질문이면 맞춤 조언을 해주세요.
 4. 짧고 핵심적으로 답변하되, 필요하면 예문을 포함하세요.
-5. 사용자가 이미 학습 중인 표현에 대해 질문하면, "이전에도 학습하신 표현이에요!"라고 상기시켜주세요.
+5. 사용자가 이미 관리 중인 표현/실수에 대해 물어보면, 현재 관리 상태를 알려주세요. 예:
+   - "이 표현은 이미 학습 목록에 있고, 3회 사용하셨어요! 잘하고 계세요 🔥"
+   - "이 표현은 아직 한 번도 안 쓰셨네요. 오늘 일기에 써보는 건 어때요?"
+   - "이 실수는 2회 반복되고 있어요. 최근에 'preasured'라고 쓰셨는데, 'pressured'가 맞아요."
+   - "이 실수는 개선 중이에요! 연속 2회 안 틀리고 있어요. 조금만 더 힘내세요! 🟡"
 9. 사용자가 영어 단어나 표현만 입력하면 (예: "push back on", "vibrant"), 다음을 해주세요:
    - 뜻과 사용법을 간단히 설명
    - 사용자 수준에 맞는 예문 제공
