@@ -70,6 +70,7 @@ export async function POST(request: Request) {
 2. 사용자가 학습 중인 표현을 자연스럽게 포함시키세요
 3. 사용자의 실수 패턴과 관련된 올바른 용례를 포함시키세요
 4. 주제는 일상적이고 흥미로운 내용
+5. 본문에 **bold**, __italic__ 등 마크다운 서식을 사용하지 마세요. 순수 텍스트만 사용하세요.
 
 다음 JSON으로만 응답하세요:
 {
@@ -102,6 +103,7 @@ ${patternList.join(", ") || "없음"}
     const text = await generateAIResponse(systemPrompt, userMsg);
     const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const article = JSON.parse(cleaned);
+    article.content = article.content.replace(/\*\*(.*?)\*\*/g, "$1").replace(/__(.*?)__/g, "$1");
     return NextResponse.json({ article });
   } catch {
     return NextResponse.json({ error: "아티클 생성에 실패했습니다." }, { status: 500 });
