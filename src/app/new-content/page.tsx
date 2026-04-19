@@ -163,7 +163,7 @@ function ReadingTab() {
                   onClick={() => setActiveTooltip(isActive ? null : `${pIdx}-${i}`)}
                   className={`cursor-pointer px-0.5 rounded transition-colors ${
                     part.highlight.type === "mistake"
-                      ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                      ? "bg-red-100 text-red-800 hover:bg-red-200"
                       : part.highlight.source === "ai"
                         ? "bg-green-100 text-green-800 hover:bg-green-200"
                         : "bg-blue-100 text-blue-800 hover:bg-blue-200"
