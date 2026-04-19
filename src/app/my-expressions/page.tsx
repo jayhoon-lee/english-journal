@@ -12,12 +12,12 @@ interface MistakePattern {
   status: string;
   examples: string[];
   last_seen_at: string;
-  correctionInfo?: {
+  corrections: {
     original: string;
     corrected: string;
     entryId: string;
     entryDate: string;
-  } | null;
+  }[];
 }
 
 interface Expression {
@@ -82,27 +82,26 @@ export default function MyExpressionsPage() {
     // 패턴에 교정 정보 + 일기 링크 매칭
     const entries = entriesRes.data || [];
     const patternsWithDetails = (patternsRes.data || []).map((p: MistakePattern) => {
-      let correctionInfo: { original: string; corrected: string; entryId: string; entryDate: string } | null = null;
+      const corrections: { original: string; corrected: string; entryId: string; entryDate: string }[] = [];
 
       for (const entry of entries) {
         try {
           const fb = JSON.parse(entry.feedback_json);
-          const match = fb.mistakes?.find(
+          const matches = (fb.mistakes || []).filter(
             (m: { pattern_name: string }) => m.pattern_name === p.pattern_name
           );
-          if (match) {
-            correctionInfo = {
+          for (const match of matches) {
+            corrections.push({
               original: match.original,
               corrected: match.corrected,
               entryId: entry.id,
               entryDate: entry.date,
-            };
-            break;
+            });
           }
         } catch {}
       }
 
-      return { ...p, correctionInfo };
+      return { ...p, corrections };
     });
     setPatterns(patternsWithDetails);
 
@@ -181,26 +180,41 @@ export default function MyExpressionsPage() {
                   </div>
                   {p.rule && <p className="text-sm text-gray-600 mb-2">{p.rule}</p>}
 
-                  {p.correctionInfo && (
-                    <div className="mt-2 py-2 px-3 bg-gray-50 rounded-lg space-y-1">
-                      <p className="text-xs">
-                        <span className="text-gray-400 mr-1">✗</span>
-                        <span className="bg-red-100 text-red-600 px-1 rounded">{p.correctionInfo.original}</span>
-                      </p>
-                      <p className="text-xs">
-                        <span className="text-gray-400 mr-1">✓</span>
-                        <span className="bg-green-100 text-green-700 px-1 rounded">{p.correctionInfo.corrected}</span>
-                      </p>
-                      <a
-                        href={`/journal?tab=history`}
-                        className="inline-block text-[10px] text-blue-500 hover:underline mt-1"
-                      >
-                        {new Date(p.correctionInfo.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })} 일기에서 발생 →
-                      </a>
+                  {p.corrections.length > 0 && (
+                    <div className="mt-2 overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-1.5 pr-2 text-gray-400 font-medium">내가 쓴 표현</th>
+                            <th className="text-left py-1.5 pr-2 text-gray-400 font-medium">올바른 표현</th>
+                            <th className="text-left py-1.5 text-gray-400 font-medium">일기</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {p.corrections.map((c, i) => (
+                            <tr key={i} className="border-b border-gray-50">
+                              <td className="py-1.5 pr-2">
+                                <span className="bg-red-100 text-red-600 px-1 rounded">{c.original}</span>
+                              </td>
+                              <td className="py-1.5 pr-2">
+                                <span className="bg-green-100 text-green-700 px-1 rounded">{c.corrected}</span>
+                              </td>
+                              <td className="py-1.5">
+                                <a
+                                  href="/journal?tab=history"
+                                  className="text-blue-500 hover:underline whitespace-nowrap"
+                                >
+                                  {new Date(c.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })} →
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
 
-                  {!p.correctionInfo && p.examples?.length > 0 && (
+                  {p.corrections.length === 0 && p.examples?.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {p.examples.slice(-3).map((ex, i) => (
                         <span key={i} className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">
