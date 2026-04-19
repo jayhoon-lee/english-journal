@@ -107,7 +107,13 @@ function ReadingTab() {
     const res = await fetch("/api/article", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic: topic || undefined, levelAdjust: newAdjust, maxWords }),
+      body: JSON.stringify({
+        topic: topic || undefined,
+        levelAdjust: newAdjust,
+        maxWords,
+        previousTitle: article?.title || undefined,
+        seed: Date.now(),
+      }),
     });
 
     const data = await res.json();

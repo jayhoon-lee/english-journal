@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { topic, levelAdjust, maxWords } = await request.json();
+  const { topic, levelAdjust, maxWords, previousTitle } = await request.json();
   const provider = getProvider();
 
   const { data: stats } = await supabase
@@ -92,6 +92,7 @@ export async function POST(request: Request) {
 
   const userMsg = `사용자 레벨: CEFR ${targetCefr} (Lv.${adjustedLevel})
 ${topic ? `원하는 주제: ${topic}` : "주제: 자유 (일상, 여행, 취미 등 흥미로운 주제)"}
+${previousTitle ? `이전에 "${previousTitle}"이라는 글을 생성했으니, 완전히 다른 주제와 내용으로 작성하세요.` : ""}
 
 [사용자가 학습 중인 표현 — 이 중 3~5개를 자연스럽게 포함, source를 "user"로 표시]
 ${expressionList.join(", ") || "없음"}
