@@ -68,7 +68,16 @@ export default function MyExpressionsPage() {
     ]);
 
     setPatterns(patternsRes.data || []);
-    setExpressions(expressionsRes.data || []);
+
+    const exprs = expressionsRes.data || [];
+    exprs.sort((a, b) => {
+      const priorityOrder: Record<string, number> = { forgotten: 0, dormant: 1, active: 2 };
+      const aPriority = a.usage_count === 0 ? -1 : (priorityOrder[a.status] ?? 2);
+      const bPriority = b.usage_count === 0 ? -1 : (priorityOrder[b.status] ?? 2);
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      return (a.usage_count || 0) - (b.usage_count || 0);
+    });
+    setExpressions(exprs);
     setLoading(false);
   }
 
@@ -170,12 +179,25 @@ export default function MyExpressionsPage() {
               아직 학습 중인 표현이 없어요. 새 학습 탭에서 추가해보세요 📖
             </div>
           ) : (
-            expressions.map((e) => {
+            expressions.map((e, idx) => {
               const badge = exprStatusBadge[e.status] || exprStatusBadge.active;
+              const needsPractice = e.usage_count === 0;
+              const prevExpr = idx > 0 ? expressions[idx - 1] : null;
+              const showDivider = idx > 0 && (prevExpr?.usage_count === 0) !== needsPractice;
+
               return (
-                <div key={e.id} className="bg-white rounded-xl border p-5">
+                <div key={e.id}>
+                  {showDivider && (
+                    <div className="flex items-center gap-2 my-3">
+                      <div className="flex-1 border-t border-gray-200" />
+                      <span className="text-[10px] text-gray-400">사용한 적 있는 표현</span>
+                      <div className="flex-1 border-t border-gray-200" />
+                    </div>
+                  )}
+                <div className={`bg-white rounded-xl border p-5 ${needsPractice ? "border-l-4 border-l-orange-400" : ""}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
+                      {needsPractice && <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-medium">미사용</span>}
                       <span>{badge.emoji}</span>
                       <span className="font-semibold">{e.expression}</span>
                     </div>
@@ -190,6 +212,7 @@ export default function MyExpressionsPage() {
                   {e.example_sentence && (
                     <p className="text-sm text-gray-400 italic mt-1">{e.example_sentence}</p>
                   )}
+                </div>
                 </div>
               );
             })
