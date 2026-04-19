@@ -89,7 +89,7 @@ function JournalContent() {
   const [suggestions, setSuggestions] = useState<
     { type: string; emoji: string; title: string; description: string; example?: string; entryId?: string; entryDate?: string; original?: string; corrected?: string }[]
   >([]);
-  const [tipsOpen, setTipsOpen] = useState(true);
+  const [tipsOpen, setTipsOpen] = useState(false);
 
   const supabase = createClient();
 
