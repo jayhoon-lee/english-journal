@@ -12,6 +12,12 @@ interface MistakePattern {
   status: string;
   examples: string[];
   last_seen_at: string;
+  correctionInfo?: {
+    original: string;
+    corrected: string;
+    entryId: string;
+    entryDate: string;
+  } | null;
 }
 
 interface Expression {
@@ -56,7 +62,7 @@ export default function MyExpressionsPage() {
   async function loadData() {
     setLoading(true);
 
-    const [patternsRes, expressionsRes] = await Promise.all([
+    const [patternsRes, expressionsRes, entriesRes] = await Promise.all([
       supabase
         .from("mistake_patterns")
         .select("*")
@@ -65,9 +71,40 @@ export default function MyExpressionsPage() {
         .from("expressions")
         .select("*")
         .order("last_used_at", { ascending: true, nullsFirst: true }),
+      supabase
+        .from("journal_entries")
+        .select("id, date, feedback_json")
+        .not("feedback_json", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(20),
     ]);
 
-    setPatterns(patternsRes.data || []);
+    // 패턴에 교정 정보 + 일기 링크 매칭
+    const entries = entriesRes.data || [];
+    const patternsWithDetails = (patternsRes.data || []).map((p: MistakePattern) => {
+      let correctionInfo: { original: string; corrected: string; entryId: string; entryDate: string } | null = null;
+
+      for (const entry of entries) {
+        try {
+          const fb = JSON.parse(entry.feedback_json);
+          const match = fb.mistakes?.find(
+            (m: { pattern_name: string }) => m.pattern_name === p.pattern_name
+          );
+          if (match) {
+            correctionInfo = {
+              original: match.original,
+              corrected: match.corrected,
+              entryId: entry.id,
+              entryDate: entry.date,
+            };
+            break;
+          }
+        } catch {}
+      }
+
+      return { ...p, correctionInfo };
+    });
+    setPatterns(patternsWithDetails);
 
     const exprs = expressionsRes.data || [];
     exprs.sort((a, b) => {
@@ -143,8 +180,28 @@ export default function MyExpressionsPage() {
                     </div>
                   </div>
                   {p.rule && <p className="text-sm text-gray-600 mb-2">{p.rule}</p>}
-                  {p.examples?.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+
+                  {p.correctionInfo && (
+                    <div className="mt-2 py-2 px-3 bg-gray-50 rounded-lg space-y-1">
+                      <p className="text-xs">
+                        <span className="text-gray-400 mr-1">✗</span>
+                        <span className="bg-red-100 text-red-600 px-1 rounded">{p.correctionInfo.original}</span>
+                      </p>
+                      <p className="text-xs">
+                        <span className="text-gray-400 mr-1">✓</span>
+                        <span className="bg-green-100 text-green-700 px-1 rounded">{p.correctionInfo.corrected}</span>
+                      </p>
+                      <a
+                        href={`/journal?tab=history`}
+                        className="inline-block text-[10px] text-blue-500 hover:underline mt-1"
+                      >
+                        {new Date(p.correctionInfo.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })} 일기에서 발생 →
+                      </a>
+                    </div>
+                  )}
+
+                  {!p.correctionInfo && p.examples?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {p.examples.slice(-3).map((ex, i) => (
                         <span key={i} className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">
                           {ex}
