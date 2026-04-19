@@ -45,6 +45,12 @@ export default function MyExpressionsPage() {
 
   useEffect(() => {
     loadData();
+
+    function handleUpdate() {
+      loadData();
+    }
+    window.addEventListener("expressions-updated", handleUpdate);
+    return () => window.removeEventListener("expressions-updated", handleUpdate);
   }, []);
 
   async function loadData() {

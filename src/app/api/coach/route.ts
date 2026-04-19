@@ -135,7 +135,7 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
         }
 
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ done: true, reply })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ done: true, reply, savedExpressions })}\n\n`)
         );
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "";
