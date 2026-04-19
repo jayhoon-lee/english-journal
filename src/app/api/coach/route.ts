@@ -107,7 +107,7 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
   for (const e of expressions || []) {
     if (messageLower.includes(e.expression.toLowerCase()) || e.expression.toLowerCase().includes(messageLower)) {
       if (messageLower.length >= 3) {
-        const newCount = Math.max(0, (e.usage_count || 0) - 1);
+        const newCount = (e.usage_count || 0) - 1;
         await supabase
           .from("expressions")
           .update({ usage_count: newCount })
