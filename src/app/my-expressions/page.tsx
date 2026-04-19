@@ -138,13 +138,23 @@ export default function MyExpressionsPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {displayItems.map((item) => (
+          {(() => {
+            let mistakeIdx = 0;
+            let exprIdx = 0;
+            return displayItems.map((item) => {
+              const idx = item.kind === "mistake" ? ++mistakeIdx : ++exprIdx;
+              return (
             <div
               key={item.id}
               className="bg-white rounded-xl border p-4"
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
+                  <span className={`text-[10px] w-5 h-5 flex items-center justify-center rounded font-mono font-medium ${
+                    item.kind === "mistake" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
+                  }`}>
+                    {idx}
+                  </span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
                     item.kind === "mistake" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
                   }`}>
@@ -198,7 +208,9 @@ export default function MyExpressionsPage() {
                 </div>
               )}
             </div>
-          ))}
+              );
+            });
+          })()}
         </div>
       )}
     </div>
