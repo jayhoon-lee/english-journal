@@ -105,10 +105,27 @@ ${patternList.join(", ") || "없음"}
   try {
     const text = await generateAIResponse(systemPrompt, userMsg);
     const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const article = JSON.parse(cleaned);
+
+    let article;
+    try {
+      article = JSON.parse(cleaned);
+    } catch {
+      return NextResponse.json({
+        error: "AI 응답을 처리할 수 없었어요. 다시 시도해주세요.",
+      }, { status: 500 });
+    }
+
     article.content = article.content.replace(/\*\*(.*?)\*\*/g, "$1").replace(/__(.*?)__/g, "$1");
     return NextResponse.json({ article });
-  } catch {
-    return NextResponse.json({ error: "아티클 생성에 실패했습니다." }, { status: 500 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("429") || msg.includes("quota") || msg.includes("Too Many")) {
+      return NextResponse.json({
+        error: "API 호출 한도를 초과했어요. 잠시 후 다시 시도해주세요 (무료 티어: 일 20회).",
+      }, { status: 429 });
+    }
+    return NextResponse.json({
+      error: `아티클 생성 중 오류가 발생했어요: ${msg || "알 수 없는 오류"}`,
+    }, { status: 500 });
   }
 }
