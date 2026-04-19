@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { topic } = await request.json();
+  const { topic, levelAdjust, maxWords } = await request.json();
   const provider = getProvider();
 
   const { data: stats } = await supabase
@@ -52,12 +52,14 @@ export async function POST(request: Request) {
     });
   }
 
-  const userLevel = stats?.level || 1;
+  const baseLevel = stats?.level || 1;
+  const adjustedLevel = Math.max(1, Math.min(9, baseLevel + (levelAdjust || 0)));
   const cefrMap: Record<number, string> = {
     1: "A1", 2: "A2", 3: "A2-B1", 4: "B1", 5: "B1-B2",
     6: "B2", 7: "B2-C1", 8: "C1", 9: "C1-C2",
   };
-  const targetCefr = cefrMap[userLevel] || "B1";
+  const targetCefr = cefrMap[adjustedLevel] || "B1";
+  const wordLimit = maxWords || 200;
 
   const expressionList = (expressions || []).map(e => `${e.expression} (${e.meaning})`);
   const patternList = (patterns || []).map(p => p.pattern_name);
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
 사용자의 수준(CEFR ${targetCefr})에 맞는 영어 아티클을 작성하세요.
 
 중요한 규칙:
-1. 아티클은 영어로 작성 (200~350 단어)
+1. 아티클은 영어로 작성 (${wordLimit}단어 내외, 최대 ${wordLimit + 50}단어)
 2. 사용자가 학습 중인 표현을 자연스럽게 포함시키세요
 3. 사용자의 실수 패턴과 관련된 올바른 용례를 포함시키세요
 4. 주제는 일상적이고 흥미로운 내용

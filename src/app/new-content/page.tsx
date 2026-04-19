@@ -83,8 +83,22 @@ function ReadingTab() {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [error, setError] = useState("");
+  const [levelAdjust, setLevelAdjust] = useState(0);
+  const [maxWords, setMaxWords] = useState(150);
 
-  async function loadArticle() {
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (loading) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [loading]);
+
+  async function loadArticle(adjust?: number) {
+    const newAdjust = adjust !== undefined ? adjust : levelAdjust;
+    setLevelAdjust(newAdjust);
     setLoading(true);
     setError("");
     setArticle(null);
@@ -93,7 +107,7 @@ function ReadingTab() {
     const res = await fetch("/api/article", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic: topic || undefined }),
+      body: JSON.stringify({ topic: topic || undefined, levelAdjust: newAdjust, maxWords }),
     });
 
     const data = await res.json();
@@ -174,11 +188,20 @@ function ReadingTab() {
           type="text"
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
-          placeholder="주제를 입력하세요 (선택사항)"
+          placeholder="주제 (선택사항)"
           className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        <select
+          value={maxWords}
+          onChange={(e) => setMaxWords(Number(e.target.value))}
+          className="px-2 py-2 border rounded-lg text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value={100}>짧게</option>
+          <option value={150}>보통</option>
+          <option value={250}>길게</option>
+        </select>
         <button
-          onClick={loadArticle}
+          onClick={() => loadArticle()}
           disabled={loading}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
         >
@@ -213,6 +236,7 @@ function ReadingTab() {
               <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
             </div>
             <p className="text-sm text-gray-500">맞춤 아티클을 작성하고 있어요...</p>
+            <p className="text-xs text-red-400">⚠️ 페이지를 벗어나면 아티클이 생성되지 않을 수 있어요.</p>
           </div>
         </div>
       )}
@@ -248,6 +272,38 @@ function ReadingTab() {
               >
                 {hintMode ? "💡 힌트 ON" : "💡 힌트 OFF"}
               </button>
+            </div>
+
+            {/* 난이도 조절 */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => loadArticle(levelAdjust - 1)}
+                  disabled={loading}
+                  className="px-3 py-1.5 text-xs font-medium bg-green-50 text-green-700 rounded-lg hover:bg-green-100 disabled:opacity-50 transition-colors"
+                >
+                  ▼ 더 쉽게
+                </button>
+                <button
+                  onClick={() => loadArticle(levelAdjust)}
+                  disabled={loading}
+                  className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                >
+                  ↻ 같은 수준 재생성
+                </button>
+                <button
+                  onClick={() => loadArticle(levelAdjust + 1)}
+                  disabled={loading}
+                  className="px-3 py-1.5 text-xs font-medium bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 disabled:opacity-50 transition-colors"
+                >
+                  ▲ 더 어렵게
+                </button>
+              </div>
+              {levelAdjust !== 0 && (
+                <span className="text-[10px] text-gray-400">
+                  수준 조정: {levelAdjust > 0 ? `+${levelAdjust}` : levelAdjust}
+                </span>
+              )}
             </div>
 
             <div
