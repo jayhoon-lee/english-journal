@@ -38,38 +38,62 @@ export default function CoachSidebar() {
 
     const pageContext = getPageContext();
 
-    const res = await fetch("/api/coach", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: userMessage,
-        chatHistory: messages,
-        pageContext,
-      }),
-    });
+    try {
+      const res = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage,
+          chatHistory: messages,
+          pageContext,
+        }),
+      });
 
-    const reader = res.body?.getReader();
-    const decoder = new TextDecoder();
-
-    while (reader) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
-
-      for (const line of lines) {
-        try {
-          const data = JSON.parse(line.slice(6));
-          if (data.done) {
-            setMessages((prev) => {
-              const updated = [...prev];
-              updated[updated.length - 1] = { role: "assistant", content: data.reply };
-              return updated;
-            });
-          }
-        } catch {}
+      if (!res.ok) {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: "오류가 발생했어요. 잠시 후 다시 시도해주세요 🙏",
+          };
+          return updated;
+        });
+        setLoading(false);
+        return;
       }
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.done) {
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: "assistant", content: data.reply };
+                return updated;
+              });
+            }
+          } catch {}
+        }
+      }
+    } catch {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: "네트워크 오류가 발생했어요. 인터넷 연결을 확인해주세요.",
+        };
+        return updated;
+      });
     }
 
     setLoading(false);
