@@ -3,58 +3,46 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-interface MistakePattern {
+interface UnifiedItem {
   id: string;
-  pattern_name: string;
-  rule: string;
-  count: number;
-  consecutive_clean: number;
+  kind: "mistake" | "expression";
+  title: string;
+  description: string;
+  example?: string;
   status: string;
-  examples: string[];
-  last_seen_at: string;
-  corrections: {
+  priority: number; // lower = more urgent
+  usageCount?: number;
+  mistakeCount?: number;
+  consecutiveClean?: number;
+  corrections?: {
     original: string;
     corrected: string;
-    entryId: string;
     entryDate: string;
   }[];
 }
 
-interface Expression {
-  id: string;
-  expression: string;
-  meaning: string;
-  example_sentence: string;
-  usage_count: number;
-  last_used_at: string;
-  status: string;
-}
-
-const statusBadge: Record<string, { emoji: string; label: string; color: string }> = {
-  active: { emoji: "🔴", label: "Active", color: "bg-red-50 text-red-700" },
-  improving: { emoji: "🟡", label: "Improving", color: "bg-yellow-50 text-yellow-700" },
-  cleared: { emoji: "🟢", label: "Cleared", color: "bg-green-50 text-green-700" },
-};
-
-const exprStatusBadge: Record<string, { emoji: string; label: string; color: string }> = {
-  active: { emoji: "🔥", label: "Active", color: "bg-orange-50 text-orange-700" },
-  dormant: { emoji: "😴", label: "Dormant", color: "bg-gray-50 text-gray-600" },
-  forgotten: { emoji: "❄️", label: "Forgotten", color: "bg-blue-50 text-blue-700" },
+const statusConfig: Record<string, { emoji: string; label: string; color: string }> = {
+  // mistakes
+  "mistake-active": { emoji: "🔴", label: "반복 실수", color: "bg-red-50 text-red-700" },
+  "mistake-improving": { emoji: "🟡", label: "개선 중", color: "bg-yellow-50 text-yellow-700" },
+  "mistake-cleared": { emoji: "🟢", label: "극복!", color: "bg-green-50 text-green-700" },
+  // expressions
+  "expr-unused": { emoji: "🆕", label: "미사용", color: "bg-orange-50 text-orange-700" },
+  "expr-forgotten": { emoji: "❄️", label: "잊혀가는 중", color: "bg-blue-50 text-blue-700" },
+  "expr-dormant": { emoji: "😴", label: "오래 안 씀", color: "bg-gray-100 text-gray-600" },
+  "expr-active": { emoji: "🔥", label: "잘 사용 중", color: "bg-green-50 text-green-700" },
 };
 
 export default function MyExpressionsPage() {
-  const [tab, setTab] = useState<"watch" | "keep">("watch");
-  const [patterns, setPatterns] = useState<MistakePattern[]>([]);
-  const [expressions, setExpressions] = useState<Expression[]>([]);
+  const [items, setItems] = useState<UnifiedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "attention" | "good">("all");
   const supabase = createClient();
 
   useEffect(() => {
     loadData();
 
-    function handleUpdate() {
-      loadData();
-    }
+    function handleUpdate() { loadData(); }
     window.addEventListener("expressions-updated", handleUpdate);
     return () => window.removeEventListener("expressions-updated", handleUpdate);
   }, []);
@@ -63,27 +51,19 @@ export default function MyExpressionsPage() {
     setLoading(true);
 
     const [patternsRes, expressionsRes, entriesRes] = await Promise.all([
-      supabase
-        .from("mistake_patterns")
-        .select("*")
-        .order("count", { ascending: false }),
-      supabase
-        .from("expressions")
-        .select("*")
-        .order("last_used_at", { ascending: true, nullsFirst: true }),
-      supabase
-        .from("journal_entries")
-        .select("id, date, feedback_json")
+      supabase.from("mistake_patterns").select("*").order("count", { ascending: false }),
+      supabase.from("expressions").select("*").order("last_used_at", { ascending: true, nullsFirst: true }),
+      supabase.from("journal_entries").select("id, date, feedback_json")
         .not("feedback_json", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(20),
+        .order("created_at", { ascending: false }).limit(20),
     ]);
 
-    // 패턴에 교정 정보 + 일기 링크 매칭
     const entries = entriesRes.data || [];
-    const patternsWithDetails = (patternsRes.data || []).map((p: MistakePattern) => {
-      const corrections: { original: string; corrected: string; entryId: string; entryDate: string }[] = [];
+    const unified: UnifiedItem[] = [];
 
+    // Mistakes → UnifiedItem
+    for (const p of patternsRes.data || []) {
+      const corrections: { original: string; corrected: string; entryDate: string }[] = [];
       for (const entry of entries) {
         try {
           const fb = JSON.parse(entry.feedback_json);
@@ -94,200 +74,209 @@ export default function MyExpressionsPage() {
             corrections.push({
               original: match.original,
               corrected: match.corrected,
-              entryId: entry.id,
               entryDate: entry.date,
             });
           }
         } catch {}
       }
 
-      return { ...p, corrections };
-    });
-    setPatterns(patternsWithDetails);
+      const priority =
+        p.status === "active" ? 0 :
+        p.status === "improving" ? 2 : 4;
 
-    const exprs = expressionsRes.data || [];
-    exprs.sort((a, b) => {
-      const priorityOrder: Record<string, number> = { forgotten: 0, dormant: 1, active: 2 };
-      const aPriority = a.usage_count === 0 ? -1 : (priorityOrder[a.status] ?? 2);
-      const bPriority = b.usage_count === 0 ? -1 : (priorityOrder[b.status] ?? 2);
-      if (aPriority !== bPriority) return aPriority - bPriority;
-      return (a.usage_count || 0) - (b.usage_count || 0);
-    });
-    setExpressions(exprs);
+      unified.push({
+        id: `m-${p.id}`,
+        kind: "mistake",
+        title: p.pattern_name,
+        description: p.rule || "",
+        status: `mistake-${p.status}`,
+        priority,
+        mistakeCount: p.count,
+        consecutiveClean: p.consecutive_clean,
+        corrections,
+      });
+    }
+
+    // Expressions → UnifiedItem
+    for (const e of expressionsRes.data || []) {
+      let status: string;
+      let priority: number;
+
+      if (e.usage_count === 0) {
+        status = "expr-unused";
+        priority = 1;
+      } else if (e.status === "forgotten") {
+        status = "expr-forgotten";
+        priority = 1;
+      } else if (e.status === "dormant") {
+        status = "expr-dormant";
+        priority = 2;
+      } else {
+        status = "expr-active";
+        priority = 5;
+      }
+
+      unified.push({
+        id: `e-${e.id}`,
+        kind: "expression",
+        title: e.expression,
+        description: e.meaning || "",
+        example: e.example_sentence || undefined,
+        status,
+        priority,
+        usageCount: e.usage_count,
+      });
+    }
+
+    unified.sort((a, b) => a.priority - b.priority || a.title.localeCompare(b.title));
+    setItems(unified);
     setLoading(false);
   }
 
-  const dormantOrForgotten = expressions.filter(
-    (e) => e.status === "dormant" || e.status === "forgotten"
-  );
-  const todayPick = dormantOrForgotten.length > 0
-    ? dormantOrForgotten[Math.floor(Math.random() * dormantOrForgotten.length)]
-    : null;
+  const attentionItems = items.filter(i => i.priority <= 2);
+  const goodItems = items.filter(i => i.priority > 2);
+
+  const displayItems =
+    filter === "attention" ? attentionItems :
+    filter === "good" ? goodItems : items;
+
+  const todayPick = attentionItems.filter(i => i.kind === "expression")[0];
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl sm:text-2xl font-bold">내 표현 관리</h1>
-
-      {/* 탭 */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setTab("watch")}
-          className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-            tab === "watch"
-              ? "bg-red-50 text-red-700 border border-red-200"
-              : "bg-white text-gray-600 border hover:bg-gray-50"
-          }`}
-        >
-          Watch List
-        </button>
-        <button
-          onClick={() => setTab("keep")}
-          className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-            tab === "keep"
-              ? "bg-blue-50 text-blue-700 border border-blue-200"
-              : "bg-white text-gray-600 border hover:bg-gray-50"
-          }`}
-        >
-          Keep List
-        </button>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold">내 표현 관리</h1>
+        <div className="text-xs text-gray-400">
+          {attentionItems.length}개 주의 · {goodItems.length}개 양호
+        </div>
       </div>
+
+      {/* 필터 */}
+      <div className="flex gap-2">
+        {[
+          { key: "all" as const, label: "전체", count: items.length },
+          { key: "attention" as const, label: "주의 필요", count: attentionItems.length },
+          { key: "good" as const, label: "잘하고 있어요", count: goodItems.length },
+        ].map(({ key, label, count }) => (
+          <button
+            key={key}
+            onClick={() => setFilter(key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              filter === key
+                ? "bg-blue-50 text-blue-700 border border-blue-200"
+                : "bg-white text-gray-500 border hover:bg-gray-50"
+            }`}
+          >
+            {label} ({count})
+          </button>
+        ))}
+      </div>
+
+      {/* 오늘의 추천 */}
+      {filter !== "good" && todayPick && (
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-4">
+          <div className="text-xs font-medium text-blue-600 mb-1">💡 오늘 일기에 써보세요</div>
+          <div className="font-semibold">{todayPick.title}</div>
+          <p className="text-sm text-gray-600 mt-0.5">{todayPick.description}</p>
+          {todayPick.example && (
+            <p className="text-xs text-gray-400 italic mt-1">{todayPick.example}</p>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12 text-gray-400">로딩 중...</div>
-      ) : tab === "watch" ? (
-        <div className="space-y-3">
-          {patterns.length === 0 ? (
-            <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
-              아직 기록된 실수 패턴이 없어요. 일기를 작성하면 자동으로 분석됩니다 💪
-            </div>
-          ) : (
-            patterns.map((p) => {
-              const badge = statusBadge[p.status] || statusBadge.active;
-              return (
-                <div key={p.id} className="bg-white rounded-xl border p-5">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{badge.emoji}</span>
-                      <span className="font-semibold">{p.pattern_name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm flex-wrap">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>
-                        {badge.label}
-                      </span>
-                      <span className="text-gray-400">실수 {p.count}회</span>
-                      <span className="text-gray-400">클린 {p.consecutive_clean}</span>
-                    </div>
-                  </div>
-                  {p.rule && <p className="text-sm text-gray-600 mb-2">{p.rule}</p>}
-
-                  {p.corrections.length > 0 && (
-                    <div className="mt-2 overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-gray-200">
-                            <th className="text-left py-1.5 pr-2 text-gray-400 font-medium">내가 쓴 표현</th>
-                            <th className="text-left py-1.5 pr-2 text-gray-400 font-medium">올바른 표현</th>
-                            <th className="text-left py-1.5 text-gray-400 font-medium">일기</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {p.corrections.map((c, i) => (
-                            <tr key={i} className="border-b border-gray-50">
-                              <td className="py-1.5 pr-2">
-                                <span className="bg-red-100 text-red-600 px-1 rounded">{c.original}</span>
-                              </td>
-                              <td className="py-1.5 pr-2">
-                                <span className="bg-green-100 text-green-700 px-1 rounded">{c.corrected}</span>
-                              </td>
-                              <td className="py-1.5">
-                                <a
-                                  href="/journal?tab=history"
-                                  className="text-blue-500 hover:underline whitespace-nowrap"
-                                >
-                                  {new Date(c.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })} →
-                                </a>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {p.corrections.length === 0 && p.examples?.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {p.examples.slice(-3).map((ex, i) => (
-                        <span key={i} className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">
-                          {ex}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
+      ) : displayItems.length === 0 ? (
+        <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
+          {filter === "all"
+            ? "아직 관리할 표현이 없어요. 일기를 쓰거나 AI 코치에게 물어보세요! 📖"
+            : filter === "attention"
+              ? "주의가 필요한 항목이 없어요. 잘하고 있어요! 🎉"
+              : "아직 잘 관리되는 항목이 없어요. 일기를 더 써보세요!"}
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* 오늘의 추천 표현 */}
-          {todayPick && (
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-5">
-              <div className="text-sm font-medium text-blue-600 mb-1">💡 오늘의 추천 표현</div>
-              <div className="font-semibold text-lg">{todayPick.expression}</div>
-              {todayPick.meaning && (
-                <p className="text-sm text-gray-600 mt-1">{todayPick.meaning}</p>
-              )}
-              <p className="text-xs text-gray-400 mt-2">
-                사용 횟수: {todayPick.usage_count}회 · 오늘 일기에 써보세요!
-              </p>
-            </div>
-          )}
+        <div className="space-y-3">
+          {displayItems.map((item) => {
+            const cfg = statusConfig[item.status] || statusConfig["expr-active"];
 
-          {/* 표현 목록 */}
-          {expressions.length === 0 ? (
-            <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
-              아직 학습 중인 표현이 없어요. 새 학습 탭에서 추가해보세요 📖
-            </div>
-          ) : (
-            expressions.map((e, idx) => {
-              const badge = exprStatusBadge[e.status] || exprStatusBadge.active;
-              const needsPractice = e.usage_count === 0;
-              const prevExpr = idx > 0 ? expressions[idx - 1] : null;
-              const showDivider = idx > 0 && (prevExpr?.usage_count === 0) !== needsPractice;
-
-              return (
-                <div key={e.id}>
-                  {showDivider && (
-                    <div className="flex items-center gap-2 my-3">
-                      <div className="flex-1 border-t border-gray-200" />
-                      <span className="text-[10px] text-gray-400">사용한 적 있는 표현</span>
-                      <div className="flex-1 border-t border-gray-200" />
-                    </div>
-                  )}
-                <div className={`bg-white rounded-xl border p-5 ${needsPractice ? "border-l-4 border-l-orange-400" : ""}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {needsPractice && <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-medium">미사용</span>}
-                      <span>{badge.emoji}</span>
-                      <span className="font-semibold">{e.expression}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}>
-                        {badge.label}
-                      </span>
-                      <span className="text-gray-400">{e.usage_count}회 사용</span>
-                    </div>
+            return (
+              <div
+                key={item.id}
+                className={`bg-white rounded-xl border p-4 ${
+                  item.priority <= 1 ? "border-l-4 border-l-orange-400" : ""
+                }`}
+              >
+                {/* 헤더 */}
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span>{cfg.emoji}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                      item.kind === "mistake" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
+                    }`}>
+                      {item.kind === "mistake" ? "실수" : "표현"}
+                    </span>
+                    <span className="font-semibold">{item.title}</span>
                   </div>
-                  {e.meaning && <p className="text-sm text-gray-600">{e.meaning}</p>}
-                  {e.example_sentence && (
-                    <p className="text-sm text-gray-400 italic mt-1">{e.example_sentence}</p>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>
+                      {cfg.label}
+                    </span>
+                    {item.kind === "mistake" && (
+                      <span className="text-xs text-gray-400">{item.mistakeCount}회</span>
+                    )}
+                    {item.kind === "expression" && (
+                      <span className="text-xs text-gray-400">{item.usageCount}회 사용</span>
+                    )}
+                  </div>
                 </div>
-                </div>
-              );
-            })
-          )}
+
+                {/* 설명 */}
+                {item.description && (
+                  <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                )}
+
+                {/* 예문 (표현) */}
+                {item.kind === "expression" && item.example && (
+                  <p className="text-xs text-gray-400 italic">{item.example}</p>
+                )}
+
+                {/* 교정 테이블 (실수) */}
+                {item.kind === "mistake" && item.corrections && item.corrections.length > 0 && (
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-1.5 pr-2 text-gray-400 font-medium">내가 쓴 표현</th>
+                          <th className="text-left py-1.5 pr-2 text-gray-400 font-medium">올바른 표현</th>
+                          <th className="text-left py-1.5 text-gray-400 font-medium">일기</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {item.corrections.map((c, i) => (
+                          <tr key={i} className="border-b border-gray-50">
+                            <td className="py-1.5 pr-2">
+                              <span className="bg-red-100 text-red-600 px-1 rounded">{c.original}</span>
+                            </td>
+                            <td className="py-1.5 pr-2">
+                              <span className="bg-green-100 text-green-700 px-1 rounded">{c.corrected}</span>
+                            </td>
+                            <td className="py-1.5">
+                              <a
+                                href="/journal?tab=history"
+                                className="text-blue-500 hover:underline whitespace-nowrap"
+                              >
+                                {new Date(c.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })} →
+                              </a>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
