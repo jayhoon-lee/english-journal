@@ -81,7 +81,7 @@ export default function CoachSidebar() {
                 updated[updated.length - 1] = { role: "assistant", content: data.reply };
                 return updated;
               });
-              if (data.savedExpressions?.length > 0) {
+              if (data.savedExpressions?.length > 0 || data.expressionsChanged) {
                 window.dispatchEvent(new CustomEvent("expressions-updated"));
               }
             }

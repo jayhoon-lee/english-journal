@@ -100,6 +100,24 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
    (2) 사용자가 대화 중 예문을 직접 제시하면, 그것을 예문으로 사용
    (3) 위 두 경우가 아니면, 사용자 수준에 맞는 일반 예문 작성`;
 
+  // 사용자 메시지가 기존 표현/실수와 매칭되는지 확인 → usage_count 감소
+  const messageLower = message.toLowerCase().trim();
+  const askedAgainExprs: string[] = [];
+
+  for (const e of expressions || []) {
+    if (messageLower.includes(e.expression.toLowerCase()) || e.expression.toLowerCase().includes(messageLower)) {
+      if (messageLower.length >= 3) {
+        const newCount = Math.max(0, (e.usage_count || 0) - 1);
+        await supabase
+          .from("expressions")
+          .update({ usage_count: newCount })
+          .eq("user_id", user.id)
+          .eq("expression", e.expression);
+        askedAgainExprs.push(e.expression);
+      }
+    }
+  }
+
   const conversationText = [
     ...(chatHistory || []).map((m: { role: string; content: string }) =>
       `${m.role === "user" ? "사용자" : "코치"}: ${m.content}`
@@ -160,8 +178,14 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
           reply += `\n\n📚 "${savedExpressions.join('", "')}" 표현이 내 학습 목록에 자동 저장되었어요!`;
         }
 
+        if (askedAgainExprs.length > 0 && savedExpressions.length === 0) {
+          reply += `\n\n📉 "${askedAgainExprs.join('", "')}" — 다시 물어보셨으니 복습 우선순위를 올렸어요. 일기에서 직접 써보면 다시 올라가요!`;
+        }
+
+        const expressionsChanged = savedExpressions.length > 0 || askedAgainExprs.length > 0;
+
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ done: true, reply, savedExpressions })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ done: true, reply, savedExpressions, expressionsChanged })}\n\n`)
         );
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "";
