@@ -59,8 +59,8 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
 5. 사용자가 이미 학습 중인 표현에 대해 질문하면, "이전에도 학습하신 표현이에요!"라고 상기시켜주세요.
 6. 답변에서 유용한 영어 표현을 설명했다면, 답변 맨 끝에 다음 형식으로 추가하세요:
    ===EXPRESSIONS===
-   표현1 | 한글뜻1
-   표현2 | 한글뜻2
+   표현1 | 한글뜻1 | 예문1 (영어)
+   표현2 | 한글뜻2 | 예문2 (영어)
    ===END===
    이 표현들은 자동으로 사용자의 학습 목록에 저장됩니다.
 7. 이미 학습 중인 표현이면 EXPRESSIONS 블록에 포함하지 마세요.`;
@@ -94,7 +94,10 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
           reply = fullText.replace(/===EXPRESSIONS===[\s\S]*===END===/, "").trim();
           const lines = exprMatch[1].trim().split("\n").filter(l => l.includes("|"));
           for (const line of lines) {
-            const [expr, meaning] = line.split("|").map(s => s.trim());
+            const parts = line.split("|").map(s => s.trim());
+            const expr = parts[0];
+            const meaning = parts[1];
+            const example = parts[2] || null;
             if (expr && meaning) {
               const { data: existing } = await supabase
                 .from("expressions")
@@ -108,6 +111,7 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
                   user_id: user.id,
                   expression: expr,
                   meaning,
+                  example_sentence: example,
                   usage_count: 0,
                   status: "active",
                 });
