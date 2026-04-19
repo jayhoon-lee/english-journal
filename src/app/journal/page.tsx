@@ -597,11 +597,9 @@ function FeedbackView({
         {saving ? "저장 중..." : saved ? "✓ DB에 저장 완료" : ""}
       </div>
 
-      <FeedbackChat
-        originalText={originalText}
-        feedback={feedback}
-        onFeedbackUpdate={onFeedbackUpdate}
-      />
+      <div className="text-center text-xs text-gray-400">
+        피드백에 대해 궁금한 점이 있으면 오른쪽 AI 코치에게 질문해보세요 →
+      </div>
     </div>
   );
 }
