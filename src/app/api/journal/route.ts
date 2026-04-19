@@ -96,7 +96,7 @@ ${JSON.stringify(expressions || [])}
       "is_new_pattern": true/false
     }
   ],
-  "used_expressions": ["사용자가 실제로 사용한 학습 표현만"],
+  "used_expressions": ["사용자가 사용한 좋은 표현 (학습 중인 표현 + 새로 발견된 자연스러운 표현 모두 포함)"],
   "scoring": {
     "vocabulary_score": 0-100,
     "grammar_score": 0-100,

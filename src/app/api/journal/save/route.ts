@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       .eq("id", pattern.id);
   }
 
-  // 5. expressions usage_count 갱신
+  // 5. expressions usage_count 갱신 + 좋은 표현 자동 저장
   for (const expr of feedback.used_expressions || []) {
     const { data: existing } = await supabase
       .from("expressions")
@@ -125,6 +125,15 @@ export async function POST(request: Request) {
           status: "active",
         })
         .eq("id", existing.id);
+    } else {
+      await supabase.from("expressions").insert({
+        user_id: user.id,
+        expression: expr,
+        usage_count: 1,
+        last_used_at: new Date().toISOString(),
+        status: "active",
+        source_entry_id: entry.id,
+      });
     }
   }
 
