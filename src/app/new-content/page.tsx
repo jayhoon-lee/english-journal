@@ -331,12 +331,17 @@ function ReadingTab() {
                       .filter(h => h.source === "user" || h.type === "mistake")
                       .map((h, i) => (
                         <div key={i} className="flex items-start gap-2 text-sm">
-                          <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded ${
-                            h.type === "mistake"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-blue-100 text-blue-700"
+                          <span className={`shrink-0 text-[10px] w-4 h-4 flex items-center justify-center rounded font-mono font-medium ${
+                            h.type === "mistake" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
                           }`}>
-                            {h.type === "mistake" ? "주의" : "학습중"}
+                            {i + 1}
+                          </span>
+                          <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                            h.type === "mistake"
+                              ? "bg-red-50 text-red-600"
+                              : "bg-blue-50 text-blue-600"
+                          }`}>
+                            {h.type === "mistake" ? "실수" : "표현"}
                           </span>
                           <span className="font-medium">{h.word}</span>
                           <span className="text-gray-400">—</span>
@@ -356,7 +361,10 @@ function ReadingTab() {
                       .filter(h => h.source === "ai" && h.type !== "mistake")
                       .map((h, i) => (
                         <div key={i} className="flex items-start gap-2 text-sm">
-                          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                          <span className="shrink-0 text-[10px] w-4 h-4 flex items-center justify-center rounded font-mono font-medium bg-green-50 text-green-600">
+                            {i + 1}
+                          </span>
+                          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-50 text-green-600">
                             새표현
                           </span>
                           <span className="font-medium">{h.word}</span>
