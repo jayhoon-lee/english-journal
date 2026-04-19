@@ -89,6 +89,7 @@ function JournalContent() {
   const [suggestions, setSuggestions] = useState<
     { type: string; emoji: string; title: string; description: string; example?: string; entryId?: string; entryDate?: string; original?: string; corrected?: string }[]
   >([]);
+  const [tipsOpen, setTipsOpen] = useState(true);
 
   const supabase = createClient();
 
@@ -299,62 +300,86 @@ function JournalContent() {
               </p>
             </div>
             {suggestions.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-gray-400">오늘의 도전 과제</p>
-                {suggestions.map((s, i) => (
-                  <div
-                    key={i}
-                    className={`p-3 rounded-lg text-sm ${
-                      s.type === "mistake"
-                        ? "bg-amber-50 border border-amber-100"
-                        : "bg-blue-50 border border-blue-100"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span>{s.emoji}</span>
-                      <span className="font-semibold">{s.title}</span>
-                      {s.entryDate && (
-                        <span className="text-[10px] text-gray-400">
-                          {new Date(s.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 pl-6">{s.description}</p>
-                    {(s.original || s.corrected) && (
-                      <div className="mt-1.5 pl-6 py-2 px-3 bg-white/60 rounded space-y-1">
-                        {s.original && (
-                          <p className="text-xs text-gray-500">
-                            <span className="text-gray-400 mr-1">내가 쓴 표현:</span>
-                            <span className="bg-red-100 text-red-600 px-1 rounded">{s.original}</span>
-                          </p>
-                        )}
-                        {s.corrected && (
-                          <p className="text-xs text-gray-500">
-                            <span className="text-gray-400 mr-1">올바른 표현:</span>
-                            <span className="bg-green-100 text-green-700 px-1 rounded">{s.corrected}</span>
-                          </p>
-                        )}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setTipsOpen(!tipsOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <span className="text-xs font-medium text-gray-500">
+                    📌 오늘의 작성 팁 ({suggestions.filter(s => s.type === "mistake").length}개 주의 · {suggestions.filter(s => s.type === "expression").length}개 표현)
+                  </span>
+                  <span className="text-xs text-gray-400">{tipsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
+                </button>
+
+                {tipsOpen && (
+                  <div className="p-3 space-y-2">
+                    {/* 주의할 실수 */}
+                    {suggestions.filter(s => s.type === "mistake").length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] font-semibold text-amber-600 uppercase">⚠️ 주의할 실수</p>
+                        {suggestions.filter(s => s.type === "mistake").map((s, i) => (
+                          <div key={`m-${i}`} className="p-2.5 bg-amber-50 border border-amber-100 rounded-lg text-sm">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold">{s.title}</span>
+                              {s.entryDate && (
+                                <span className="text-[10px] text-gray-400">
+                                  {new Date(s.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">{s.description}</p>
+                            {(s.original || s.corrected) && (
+                              <div className="mt-1.5 py-1.5 px-2.5 bg-white/60 rounded space-y-0.5">
+                                {s.original && (
+                                  <p className="text-xs">
+                                    <span className="text-gray-400 mr-1">✗</span>
+                                    <span className="bg-red-100 text-red-600 px-1 rounded">{s.original}</span>
+                                  </p>
+                                )}
+                                {s.corrected && (
+                                  <p className="text-xs">
+                                    <span className="text-gray-400 mr-1">✓</span>
+                                    <span className="bg-green-100 text-green-700 px-1 rounded">{s.corrected}</span>
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {s.entryId && (
+                              <button
+                                onClick={() => {
+                                  const entry = entries.find(e => e.id === s.entryId);
+                                  setPreviousTab(tab);
+                                  if (entry) {
+                                    setTab("history");
+                                    setTimeout(() => setSelectedEntry(entry), 100);
+                                  } else {
+                                    setTab("history");
+                                  }
+                                }}
+                                className="text-[10px] text-blue-500 hover:underline mt-1"
+                              >
+                                해당 일기 보기 →
+                              </button>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
-                    {s.entryId && (
-                      <button
-                        onClick={() => {
-                          const entry = entries.find(e => e.id === s.entryId);
-                          setPreviousTab(tab);
-                          if (entry) {
-                            setTab("history");
-                            setTimeout(() => setSelectedEntry(entry), 100);
-                          } else {
-                            setTab("history");
-                          }
-                        }}
-                        className="text-[10px] text-blue-500 hover:underline mt-1 pl-6"
-                      >
-                        해당 일기 보기 →
-                      </button>
+
+                    {/* 써볼 표현 */}
+                    {suggestions.filter(s => s.type === "expression").length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] font-semibold text-blue-600 uppercase">💡 오늘 써볼 표현</p>
+                        {suggestions.filter(s => s.type === "expression").map((s, i) => (
+                          <div key={`e-${i}`} className="p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-sm">
+                            <div className="font-semibold text-blue-800">{s.title}</div>
+                            <p className="text-xs text-gray-500 mt-0.5">{s.description}</p>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                ))}
+                )}
               </div>
             )}
 
