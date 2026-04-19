@@ -42,11 +42,11 @@ export async function POST(request: Request) {
         level: "B1",
         topic: topic || "일상",
         highlightWords: [
-          { word: "Initially", meaning: "처음에는", type: "expression" },
-          { word: "get things in order", meaning: "정리하다", type: "expression" },
-          { word: "looking forward to", meaning: "~을 기대하다", type: "expression" },
-          { word: "got the hang of", meaning: "요령을 터득하다", type: "expression" },
-          { word: "came across", meaning: "우연히 발견하다", type: "expression" },
+          { word: "Initially", meaning: "처음에는", type: "expression", source: "user" },
+          { word: "get things in order", meaning: "정리하다", type: "expression", source: "user" },
+          { word: "looking forward to", meaning: "~을 기대하다", type: "expression", source: "user" },
+          { word: "got the hang of", meaning: "요령을 터득하다", type: "expression", source: "ai" },
+          { word: "came across", meaning: "우연히 발견하다", type: "expression", source: "ai" },
         ],
       },
     });
@@ -81,7 +81,8 @@ export async function POST(request: Request) {
     {
       "word": "아티클에서 사용한 학습 표현 또는 실수 패턴 관련 표현",
       "meaning": "한글 뜻",
-      "type": "expression 또는 mistake"
+      "type": "expression 또는 mistake",
+      "source": "user (사용자가 학습 중인 표현) 또는 ai (AI가 새로 제안하는 표현)"
     }
   ]
 }`;
@@ -89,11 +90,13 @@ export async function POST(request: Request) {
   const userMsg = `사용자 레벨: CEFR ${targetCefr} (Lv.${userLevel})
 ${topic ? `원하는 주제: ${topic}` : "주제: 자유 (일상, 여행, 취미 등 흥미로운 주제)"}
 
-[사용자가 학습 중인 표현 — 이 중 3~5개를 자연스럽게 포함]
+[사용자가 학습 중인 표현 — 이 중 3~5개를 자연스럽게 포함, source를 "user"로 표시]
 ${expressionList.join(", ") || "없음"}
 
-[사용자의 실수 패턴 — 올바른 용례를 포함]
-${patternList.join(", ") || "없음"}`;
+[사용자의 실수 패턴 — 올바른 용례를 포함, source를 "user"로 표시]
+${patternList.join(", ") || "없음"}
+
+위 목록에 없는 새로운 유용한 표현도 2~3개 추가로 포함하고, source를 "ai"로 표시하세요.`;
 
   try {
     const text = await generateAIResponse(systemPrompt, userMsg);

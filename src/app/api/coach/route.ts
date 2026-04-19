@@ -56,7 +56,14 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
 2. 예문을 들 때는 사용자 수준에 맞춰주세요.
 3. 사용자의 실수 패턴을 알고 있으니, 관련 질문이면 맞춤 조언을 해주세요.
 4. 짧고 핵심적으로 답변하되, 필요하면 예문을 포함하세요.
-5. 순수 텍스트로만 응답하세요 (JSON 아님).`;
+5. 사용자가 이미 학습 중인 표현에 대해 질문하면, "이전에도 학습하신 표현이에요!"라고 상기시켜주세요.
+6. 답변에서 유용한 영어 표현을 설명했다면, 답변 맨 끝에 다음 형식으로 추가하세요:
+   ===EXPRESSIONS===
+   표현1 | 한글뜻1
+   표현2 | 한글뜻2
+   ===END===
+   이 표현들은 자동으로 사용자의 학습 목록에 저장됩니다.
+7. 이미 학습 중인 표현이면 EXPRESSIONS 블록에 포함하지 마세요.`;
 
   const conversationText = [
     ...(chatHistory || []).map((m: { role: string; content: string }) =>
@@ -78,8 +85,44 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
             );
           }
         );
+
+        // EXPRESSIONS 블록 파싱 및 저장
+        let reply = fullText;
+        const savedExpressions: string[] = [];
+        const exprMatch = fullText.match(/===EXPRESSIONS===\s*([\s\S]*?)\s*===END===/);
+        if (exprMatch) {
+          reply = fullText.replace(/===EXPRESSIONS===[\s\S]*===END===/, "").trim();
+          const lines = exprMatch[1].trim().split("\n").filter(l => l.includes("|"));
+          for (const line of lines) {
+            const [expr, meaning] = line.split("|").map(s => s.trim());
+            if (expr && meaning) {
+              const { data: existing } = await supabase
+                .from("expressions")
+                .select("id")
+                .eq("user_id", user.id)
+                .eq("expression", expr)
+                .single();
+
+              if (!existing) {
+                await supabase.from("expressions").insert({
+                  user_id: user.id,
+                  expression: expr,
+                  meaning,
+                  usage_count: 0,
+                  status: "active",
+                });
+                savedExpressions.push(expr);
+              }
+            }
+          }
+        }
+
+        if (savedExpressions.length > 0) {
+          reply += `\n\n📚 "${savedExpressions.join('", "')}" 표현이 내 학습 목록에 자동 저장되었어요!`;
+        }
+
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ done: true, reply: fullText })}\n\n`)
+          encoder.encode(`data: ${JSON.stringify({ done: true, reply })}\n\n`)
         );
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "";

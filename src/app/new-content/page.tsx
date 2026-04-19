@@ -16,6 +16,7 @@ interface HighlightWord {
   word: string;
   meaning: string;
   type: string;
+  source?: "user" | "ai";
 }
 
 interface Article {
@@ -112,25 +113,24 @@ function ReadingTab() {
     }
 
     return content.split("\n\n").map((para, pIdx) => {
-      let result = para;
-      const parts: (string | { word: string; highlight: HighlightWord })[] = [];
-      let remaining = para;
-
       const sortedHighlights = [...highlights].sort((a, b) => b.word.length - a.word.length);
 
-      for (const h of sortedHighlights) {
-        const regex = new RegExp(`(${h.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-        const idx = remaining.search(regex);
-        if (idx === -1) continue;
-
-        if (idx > 0) parts.push(remaining.slice(0, idx));
-        const matchedWord = remaining.slice(idx, idx + h.word.length);
-        parts.push({ word: matchedWord, highlight: h });
-        remaining = remaining.slice(idx + h.word.length);
+      // Build a combined regex to find all highlights at once
+      const escapedWords = sortedHighlights.map(h =>
+        h.word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      );
+      if (escapedWords.length === 0) {
+        return <p key={pIdx} className="mb-4 leading-relaxed">{para}</p>;
       }
-      if (remaining) parts.push(remaining);
 
-      if (parts.length === 0) parts.push(para);
+      const combinedRegex = new RegExp(`(${escapedWords.join("|")})`, "gi");
+      const segments = para.split(combinedRegex);
+
+      const parts: (string | { word: string; highlight: HighlightWord })[] = segments.map(seg => {
+        const match = sortedHighlights.find(h => h.word.toLowerCase() === seg.toLowerCase());
+        if (match) return { word: seg, highlight: match };
+        return seg;
+      });
 
       return (
         <p key={pIdx} className="mb-4 leading-relaxed">
@@ -144,7 +144,9 @@ function ReadingTab() {
                   className={`cursor-pointer px-0.5 rounded transition-colors ${
                     part.highlight.type === "mistake"
                       ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                      : "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                      : part.highlight.source === "ai"
+                        ? "bg-green-100 text-green-800 hover:bg-green-200"
+                        : "bg-blue-100 text-blue-800 hover:bg-blue-200"
                   }`}
                 >
                   {part.word}
@@ -254,24 +256,52 @@ function ReadingTab() {
           </div>
 
           {hintMode && article.highlightWords.length > 0 && (
-            <div className="bg-white rounded-xl border p-5">
-              <h3 className="text-sm font-semibold text-gray-500 mb-3">이 글에 포함된 학습 표현</h3>
-              <div className="space-y-2">
-                {article.highlightWords.map((h, i) => (
-                  <div key={i} className="flex items-start gap-2 text-sm">
-                    <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${
-                      h.type === "mistake"
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-blue-100 text-blue-700"
-                    }`}>
-                      {h.type === "mistake" ? "실수" : "표현"}
-                    </span>
-                    <span className="font-medium">{h.word}</span>
-                    <span className="text-gray-400">—</span>
-                    <span className="text-gray-600">{h.meaning}</span>
+            <div className="bg-white rounded-xl border p-5 space-y-4">
+              {/* 내가 관리하는 표현 */}
+              {article.highlightWords.filter(h => h.source === "user" || h.type === "mistake").length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-blue-600 mb-2">📚 내가 관리하는 표현</h3>
+                  <div className="space-y-1.5">
+                    {article.highlightWords
+                      .filter(h => h.source === "user" || h.type === "mistake")
+                      .map((h, i) => (
+                        <div key={i} className="flex items-start gap-2 text-sm">
+                          <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded ${
+                            h.type === "mistake"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}>
+                            {h.type === "mistake" ? "주의" : "학습중"}
+                          </span>
+                          <span className="font-medium">{h.word}</span>
+                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-600">{h.meaning}</span>
+                        </div>
+                      ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* AI 제안 표현 */}
+              {article.highlightWords.filter(h => h.source === "ai" && h.type !== "mistake").length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-green-600 mb-2">🆕 AI 추천 새 표현</h3>
+                  <div className="space-y-1.5">
+                    {article.highlightWords
+                      .filter(h => h.source === "ai" && h.type !== "mistake")
+                      .map((h, i) => (
+                        <div key={i} className="flex items-start gap-2 text-sm">
+                          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                            새표현
+                          </span>
+                          <span className="font-medium">{h.word}</span>
+                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-600">{h.meaning}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
