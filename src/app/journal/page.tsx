@@ -120,6 +120,16 @@ function JournalContent() {
     if (tab === "history") loadHistory();
   }, [tab]);
 
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (streaming) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [streaming]);
+
   async function loadHistory() {
     setLoadingHistory(true);
     const { data } = await supabase
@@ -430,6 +440,7 @@ function JournalContent() {
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-700">일기를 분석하고 있어요</p>
                   <p className="text-xs text-gray-400 mt-1">어휘, 문법, 표현, 정확도를 꼼꼼히 살펴보는 중...</p>
+                  <p className="text-xs text-red-400 mt-3">⚠️ 페이지를 벗어나면 분석 결과가 저장되지 않을 수 있어요.</p>
                 </div>
               </div>
             </div>
