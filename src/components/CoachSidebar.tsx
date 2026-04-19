@@ -76,14 +76,28 @@ export default function CoachSidebar() {
   }
 
   function getPageContext(): string {
-    const contexts: Record<string, string> = {
+    const baseContexts: Record<string, string> = {
       "/journal": "사용자가 영어 일기를 작성하거나 기록을 보고 있습니다.",
       "/my-expressions": "사용자가 실수 패턴(Watch List)이나 학습 표현(Keep List)을 관리하고 있습니다.",
       "/quiz": "사용자가 퀴즈를 풀고 있습니다.",
       "/new-content": "사용자가 새로운 학습 콘텐츠를 보고 있습니다.",
       "/status": "사용자가 자신의 레벨과 순위를 확인하고 있습니다.",
     };
-    return contexts[pathname || ""] || "";
+
+    let context = baseContexts[pathname || ""] || "";
+
+    // 현재 페이지에서 보이는 콘텐츠 캡처
+    try {
+      const articleEl = document.querySelector("[data-coach-context]");
+      if (articleEl) {
+        const content = articleEl.getAttribute("data-coach-context");
+        if (content) {
+          context += `\n\n[현재 보고 있는 콘텐츠]\n${content.slice(0, 500)}`;
+        }
+      }
+    } catch {}
+
+    return context;
   }
 
   function clearChat() {

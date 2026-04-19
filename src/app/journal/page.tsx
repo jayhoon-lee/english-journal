@@ -389,6 +389,7 @@ function JournalContent() {
               placeholder="Write your English journal here..."
               rows={8}
               className="w-full px-4 py-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+              data-coach-context={text ? `사용자가 작성 중인 일기:\n${text}` : undefined}
             />
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">{text.length}자</span>
@@ -541,7 +542,7 @@ function FeedbackView({
   onFeedbackUpdate: (updated: Feedback) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-coach-context={`사용자 일기 원문:\n${originalText}\n\nAI 교정본:\n${feedback.corrected_text}\n\n피드백:\n${feedback.feedback_summary}`}>
       <div className="bg-white rounded-xl border p-6">
         <h2 className="font-semibold mb-4">영어 실력 채점 결과</h2>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4 text-center">

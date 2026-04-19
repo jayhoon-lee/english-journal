@@ -250,7 +250,10 @@ function ReadingTab() {
               </button>
             </div>
 
-            <div className="text-gray-700 text-[15px]">
+            <div
+              className="text-gray-700 text-[15px]"
+              data-coach-context={`아티클 제목: ${article.title}\n아티클 내용:\n${article.content}`}
+            >
               {renderArticleContent(article.content, article.highlightWords)}
             </div>
           </div>
