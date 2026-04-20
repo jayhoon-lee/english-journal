@@ -147,6 +147,8 @@ ${JSON.stringify(expressions || [])}
           userError = "API 인증에 실패했어요. API 키를 확인해주세요.";
         } else if (errorMsg.includes("timeout") || errorMsg.includes("ETIMEDOUT")) {
           userError = "AI 응답 시간이 초과됐어요. 다시 시도해주세요.";
+        } else if (errorMsg.includes("high demand") || errorMsg.includes("overloaded") || errorMsg.includes("503")) {
+          userError = "AI 서버가 일시적으로 과부하 상태예요. 잠시 후 다시 시도해주세요.";
         } else {
           userError = `AI 분석 중 오류: ${errorMsg || "알 수 없는 오류"}`;
         }
