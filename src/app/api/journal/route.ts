@@ -137,11 +137,19 @@ ${JSON.stringify(expressions || [])}
           encoder.encode(`data: ${JSON.stringify({ done: true, fullText })}\n\n`)
         );
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : "AI 분석 중 오류가 발생했습니다.";
-        const isQuota = errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("Too Many");
-        const userError = isQuota
-          ? "API 호출 한도를 초과했습니다. 잠시 후 다시 시도해주세요."
-          : "AI 분석 중 오류가 발생했습니다. 다시 시도해주세요.";
+        const errorMsg = err instanceof Error ? err.message : "";
+        let userError: string;
+        if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("Too Many")) {
+          userError = "API 호출 한도를 초과했어요. 잠시 후 다시 시도해주세요 (무료 티어: 일 20회).";
+        } else if (errorMsg.includes("404") || errorMsg.includes("not_found")) {
+          userError = "AI 모델을 찾을 수 없어요. API 설정을 확인해주세요.";
+        } else if (errorMsg.includes("401") || errorMsg.includes("auth") || errorMsg.includes("key")) {
+          userError = "API 인증에 실패했어요. API 키를 확인해주세요.";
+        } else if (errorMsg.includes("timeout") || errorMsg.includes("ETIMEDOUT")) {
+          userError = "AI 응답 시간이 초과됐어요. 다시 시도해주세요.";
+        } else {
+          userError = `AI 분석 중 오류: ${errorMsg || "알 수 없는 오류"}`;
+        }
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ error: userError })}\n\n`)
         );
