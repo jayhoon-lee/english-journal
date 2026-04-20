@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { saveExpressionDeduped } from "@/lib/expression-utils";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -107,14 +108,18 @@ export async function POST(request: Request) {
       .eq("id", pattern.id);
   }
 
-  // 5. expressions usage_count 갱신 + 좋은 표현 자동 저장
+  // 5. expressions usage_count 갱신 + 좋은 표현 자동 저장 (중복 체크)
   for (const expr of feedback.used_expressions || []) {
-    const { data: existing } = await supabase
+    const { data: allExprs } = await supabase
       .from("expressions")
-      .select("id, usage_count")
-      .eq("user_id", user.id)
-      .eq("expression", expr)
-      .single();
+      .select("id, expression, usage_count")
+      .eq("user_id", user.id);
+
+    const exprLower = expr.toLowerCase().trim();
+    const existing = allExprs?.find((e) => {
+      const eLower = e.expression.toLowerCase().trim();
+      return eLower === exprLower || eLower.includes(exprLower) || exprLower.includes(eLower);
+    });
 
     if (existing) {
       await supabase
@@ -126,14 +131,12 @@ export async function POST(request: Request) {
         })
         .eq("id", existing.id);
     } else {
-      await supabase.from("expressions").insert({
-        user_id: user.id,
-        expression: expr,
-        usage_count: 1,
-        last_used_at: new Date().toISOString(),
-        status: "active",
-        source_entry_id: entry.id,
-      });
+      await saveExpressionDeduped(supabase, user.id, expr, undefined, undefined, entry.id);
+      await supabase
+        .from("expressions")
+        .update({ usage_count: 1, last_used_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .eq("expression", expr.trim());
     }
   }
 

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getProvider, streamAIResponse } from "@/lib/ai-provider";
+import { saveExpressionDeduped } from "@/lib/expression-utils";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -152,23 +153,13 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
             const meaning = parts[1];
             const example = parts[2] || null;
             if (expr && meaning) {
-              const { data: existing } = await supabase
-                .from("expressions")
-                .select("id")
-                .eq("user_id", user.id)
-                .eq("expression", expr)
-                .single();
-
-              if (!existing) {
-                await supabase.from("expressions").insert({
-                  user_id: user.id,
-                  expression: expr,
-                  meaning,
-                  example_sentence: example,
-                  usage_count: 0,
-                  status: "active",
-                });
+              const result = await saveExpressionDeduped(
+                supabase, user.id, expr, meaning, example
+              );
+              if (result.saved) {
                 savedExpressions.push(expr);
+              } else if (result.merged) {
+                savedExpressions.push(`${expr} (기존 표현에 병합)`);
               }
             }
           }
