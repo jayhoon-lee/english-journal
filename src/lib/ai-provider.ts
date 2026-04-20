@@ -16,7 +16,7 @@ export async function generateAIResponse(
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const anthropic = new Anthropic();
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
@@ -49,7 +49,7 @@ export async function streamAIResponse(
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const anthropic = new Anthropic();
     const stream = anthropic.messages.stream({
-      model: "claude-sonnet-4-6-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
