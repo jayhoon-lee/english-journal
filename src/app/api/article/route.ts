@@ -116,6 +116,17 @@ ${patternList.join(", ") || "없음"}
     }
 
     article.content = article.content.replace(/\*\*(.*?)\*\*/g, "$1").replace(/__(.*?)__/g, "$1");
+
+    // DB에 저장
+    await supabase.from("articles").insert({
+      user_id: user.id,
+      title: article.title,
+      content: article.content,
+      level: article.level,
+      topic: article.topic,
+      highlight_words: article.highlightWords,
+    });
+
     return NextResponse.json({ article });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";

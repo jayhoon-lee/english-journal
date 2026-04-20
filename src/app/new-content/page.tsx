@@ -76,6 +76,14 @@ export default function NewContentPage() {
   );
 }
 
+interface ArticleHistoryItem {
+  id: string;
+  title: string;
+  level: string;
+  topic: string;
+  created_at: string;
+}
+
 function ReadingTab() {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(false);
@@ -85,6 +93,32 @@ function ReadingTab() {
   const [error, setError] = useState("");
   const [levelAdjust, setLevelAdjust] = useState(0);
   const [maxWords, setMaxWords] = useState(150);
+  const [history, setHistory] = useState<ArticleHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  async function loadHistory() {
+    setHistoryLoading(true);
+    const res = await fetch("/api/article/history");
+    const data = await res.json();
+    setHistory(data.articles || []);
+    setHistoryLoading(false);
+  }
+
+  async function loadFromHistory(id: string) {
+    setLoading(true);
+    setError("");
+    const res = await fetch(`/api/article/${id}`);
+    const data = await res.json();
+    if (data.article) {
+      setArticle(data.article);
+      setHintMode(false);
+    }
+    setLoading(false);
+  }
 
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
@@ -121,6 +155,7 @@ function ReadingTab() {
       setError(data.error);
     } else {
       setArticle(data.article);
+      loadHistory();
     }
     setLoading(false);
   }
@@ -377,6 +412,37 @@ function ReadingTab() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 아티클 히스토리 */}
+      {history.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold text-gray-500 mb-3">📄 이전 아티클</h3>
+          <div className="space-y-2">
+            {history.map((h) => (
+              <button
+                key={h.id}
+                onClick={() => loadFromHistory(h.id)}
+                className="w-full bg-white rounded-lg border p-3 text-left hover:border-blue-300 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">{h.title}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                      {h.level}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {new Date(h.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                </div>
+                {h.topic && (
+                  <span className="text-xs text-gray-400">{h.topic}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
