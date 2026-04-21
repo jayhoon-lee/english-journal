@@ -154,7 +154,7 @@ ${pageContext ? `현재 사용자가 보고 있는 페이지 컨텍스트:\n${pa
             const example = parts[2] || null;
             if (expr && meaning) {
               const result = await saveExpressionDeduped(
-                supabase, user.id, expr, meaning, example
+                supabase, user.id, expr, meaning, example, "coach"
               );
               if (result.saved) {
                 savedExpressions.push(expr);

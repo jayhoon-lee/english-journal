@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { saveExpressionDeduped } from "@/lib/expression-utils";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -11,16 +12,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { content, meaning, example } = await request.json();
+  const { content, meaning, example, articleId } = await request.json();
 
-  await supabase.from("expressions").insert({
-    user_id: user.id,
-    expression: content,
-    meaning,
-    example_sentence: example,
-    usage_count: 0,
-    status: "active",
-  });
+  await saveExpressionDeduped(
+    supabase, user.id, content, meaning, example,
+    articleId ? "article" : "new-content",
+    null, articleId || null
+  );
 
   return NextResponse.json({ success: true });
 }

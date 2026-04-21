@@ -5,17 +5,30 @@ import { createClient } from "@/lib/supabase/client";
 
 interface UnifiedItem {
   id: string;
+  realId: string;
   kind: "mistake" | "expression";
   title: string;
   description: string;
   example?: string;
   score: number;
+  sourceType?: string;
+  sourceEntryId?: string;
+  sourceArticleId?: string;
+  sourceDate?: string;
   corrections?: {
     original: string;
     corrected: string;
     entryDate: string;
   }[];
 }
+
+const sourceLabel: Record<string, { label: string; emoji: string }> = {
+  journal: { label: "일기", emoji: "✏️" },
+  coach: { label: "AI 코치", emoji: "🧑‍🏫" },
+  article: { label: "아티클", emoji: "📖" },
+  "new-content": { label: "추천 표현", emoji: "🆕" },
+  unknown: { label: "", emoji: "" },
+};
 
 export default function MyExpressionsPage() {
   const [items, setItems] = useState<UnifiedItem[]>([]);
@@ -35,7 +48,7 @@ export default function MyExpressionsPage() {
 
     const [patternsRes, expressionsRes, entriesRes] = await Promise.all([
       supabase.from("mistake_patterns").select("*").order("count", { ascending: false }),
-      supabase.from("expressions").select("*").order("last_used_at", { ascending: true, nullsFirst: true }),
+      supabase.from("expressions").select("*, source_type, source_entry_id, source_article_id").order("last_used_at", { ascending: true, nullsFirst: true }),
       supabase.from("journal_entries").select("id, date, feedback_json")
         .not("feedback_json", "is", null)
         .order("created_at", { ascending: false }).limit(20),
@@ -63,6 +76,7 @@ export default function MyExpressionsPage() {
 
       unified.push({
         id: `m-${p.id}`,
+        realId: p.id,
         kind: "mistake",
         title: p.pattern_name,
         description: p.rule || "",
@@ -75,13 +89,25 @@ export default function MyExpressionsPage() {
       // 표현: score = usage_count (많이 쓰면 +, 안 쓰면 0 또는 -)
       const score = e.usage_count || 0;
 
+      // 출처 날짜 찾기
+      let sourceDate: string | undefined;
+      if (e.source_entry_id) {
+        const entry = entries.find((en) => en.id === e.source_entry_id);
+        if (entry) sourceDate = entry.date;
+      }
+
       unified.push({
         id: `e-${e.id}`,
+        realId: e.id,
         kind: "expression",
         title: e.expression,
         description: e.meaning || "",
         example: e.example_sentence || undefined,
         score,
+        sourceType: e.source_type || "unknown",
+        sourceEntryId: e.source_entry_id || undefined,
+        sourceArticleId: e.source_article_id || undefined,
+        sourceDate,
       });
     }
 
@@ -175,6 +201,45 @@ export default function MyExpressionsPage() {
 
               {item.kind === "expression" && item.example && (
                 <p className="text-xs text-gray-400 italic mt-1">{item.example}</p>
+              )}
+
+              {/* 출처 + 삭제 */}
+              {item.kind === "expression" && (
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center gap-2">
+                    {item.sourceType && item.sourceType !== "unknown" && (
+                      <span className="text-[10px] text-gray-400">
+                        {sourceLabel[item.sourceType]?.emoji} {sourceLabel[item.sourceType]?.label}
+                        {item.sourceDate && ` · ${new Date(item.sourceDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}`}
+                      </span>
+                    )}
+                    {item.sourceEntryId && (
+                      <a
+                        href={`/journal?tab=history&highlight=${encodeURIComponent(item.title)}`}
+                        className="text-[10px] text-blue-500 hover:underline"
+                      >
+                        원문 보기 →
+                      </a>
+                    )}
+                    {item.sourceArticleId && (
+                      <a
+                        href={`/new-content?articleId=${item.sourceArticleId}&highlight=${encodeURIComponent(item.title)}`}
+                        className="text-[10px] text-blue-500 hover:underline"
+                      >
+                        아티클 보기 →
+                      </a>
+                    )}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await supabase.from("expressions").delete().eq("id", item.realId);
+                      loadData();
+                    }}
+                    className="text-[10px] text-gray-300 hover:text-red-500 transition-colors"
+                  >
+                    삭제
+                  </button>
+                </div>
               )}
 
               {item.kind === "mistake" && item.corrections && item.corrections.length > 0 && (

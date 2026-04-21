@@ -131,7 +131,7 @@ export async function POST(request: Request) {
         })
         .eq("id", existing.id);
     } else {
-      await saveExpressionDeduped(supabase, user.id, expr, undefined, undefined, entry.id);
+      await saveExpressionDeduped(supabase, user.id, expr, undefined, undefined, "journal", entry.id);
       await supabase
         .from("expressions")
         .update({ usage_count: 1, last_used_at: new Date().toISOString() })

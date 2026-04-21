@@ -1,12 +1,16 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
+export type SourceType = "journal" | "coach" | "article" | "new-content" | "unknown";
+
 export async function saveExpressionDeduped(
   supabase: SupabaseClient,
   userId: string,
   expression: string,
   meaning?: string,
   exampleSentence?: string | null,
-  sourceEntryId?: string | null
+  sourceType?: SourceType,
+  sourceEntryId?: string | null,
+  sourceArticleId?: string | null
 ) {
   const exprLower = expression.toLowerCase().trim();
 
@@ -23,12 +27,13 @@ export async function saveExpressionDeduped(
       example_sentence: exampleSentence || null,
       usage_count: 0,
       status: "active",
+      source_type: sourceType || "unknown",
       source_entry_id: sourceEntryId || null,
+      source_article_id: sourceArticleId || null,
     });
     return { saved: true, merged: false };
   }
 
-  // Check for duplicates: exact match or containment
   const match = allExprs.find((e) => {
     const eLower = e.expression.toLowerCase().trim();
     return (
@@ -39,7 +44,6 @@ export async function saveExpressionDeduped(
   });
 
   if (match) {
-    // Merge: keep shorter expression as canonical, update meaning/example if missing
     const keepShorter = match.expression.length <= expression.trim().length;
     const updates: Record<string, string | null> = {};
 
@@ -54,7 +58,6 @@ export async function saveExpressionDeduped(
     return { saved: false, merged: true, existingId: match.id };
   }
 
-  // No match, insert new
   await supabase.from("expressions").insert({
     user_id: userId,
     expression: expression.trim(),
@@ -62,7 +65,9 @@ export async function saveExpressionDeduped(
     example_sentence: exampleSentence || null,
     usage_count: 0,
     status: "active",
+    source_type: sourceType || "unknown",
     source_entry_id: sourceEntryId || null,
+    source_article_id: sourceArticleId || null,
   });
 
   return { saved: true, merged: false };
