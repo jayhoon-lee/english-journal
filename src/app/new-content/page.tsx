@@ -92,7 +92,7 @@ function ReadingTab() {
   const [topic, setTopic] = useState("");
   const [error, setError] = useState("");
   const [levelAdjust, setLevelAdjust] = useState(0);
-  const [maxWords, setMaxWords] = useState(150);
+  const [maxWords, setMaxWords] = useState(100);
   const [history, setHistory] = useState<ArticleHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 

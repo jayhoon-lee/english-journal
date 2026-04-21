@@ -210,7 +210,9 @@ export default function CoachSidebar() {
                   : "bg-gray-100 text-gray-700 rounded-bl-sm"
               }`}
             >
-              {m.content || (
+              {m.content ? (
+                <span className="whitespace-pre-wrap">{m.content}</span>
+              ) : (
                 <span className="inline-flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
                   <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></span>
