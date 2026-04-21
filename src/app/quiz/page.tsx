@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Question {
   quiz_type: string;
@@ -9,6 +9,16 @@ interface Question {
   correct_answer: string;
   explanation: string;
   related_pattern: string;
+}
+
+interface QuizAttempt {
+  id: string;
+  quiz_type: string;
+  question: string;
+  correct_answer: string;
+  user_answer: string;
+  is_correct: boolean;
+  attempted_at: string;
 }
 
 export default function QuizPage() {
@@ -21,6 +31,17 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(false);
   const [includeTrap, setIncludeTrap] = useState(false);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<QuizAttempt[]>([]);
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  async function loadHistory() {
+    const res = await fetch("/api/quiz/history");
+    const data = await res.json();
+    setHistory(data.attempts || []);
+  }
 
   async function generateQuiz() {
     setLoading(true);
@@ -66,6 +87,7 @@ export default function QuizPage() {
         relatedPattern: q.related_pattern,
       }),
     });
+    loadHistory();
   }
 
   function nextQuestion() {
@@ -77,6 +99,8 @@ export default function QuizPage() {
       setAnswered(false);
     }
   }
+
+  const wrongHistory = history.filter(h => !h.is_correct);
 
   const quizTypeLabel: Record<string, string> = {
     error_correction: "틀린 곳 찾기",
@@ -111,7 +135,18 @@ export default function QuizPage() {
           >
             퀴즈 시작
           </button>
+
+          {wrongHistory.length > 0 && (
+            <button
+              onClick={generateQuiz}
+              className="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+            >
+              틀린 문제 다시 풀기 ({wrongHistory.length}개)
+            </button>
+          )}
         </div>
+
+        <QuizHistory history={history} quizTypeLabel={quizTypeLabel} />
       </div>
     );
   }
@@ -153,6 +188,8 @@ export default function QuizPage() {
             다시 풀기
           </button>
         </div>
+
+        <QuizHistory history={history} quizTypeLabel={quizTypeLabel} />
       </div>
     );
   }
@@ -227,6 +264,85 @@ export default function QuizPage() {
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function QuizHistory({
+  history,
+  quizTypeLabel,
+}: {
+  history: QuizAttempt[];
+  quizTypeLabel: Record<string, string>;
+}) {
+  if (history.length === 0) return null;
+
+  const grouped: Record<string, QuizAttempt[]> = {};
+  for (const h of history) {
+    const date = new Date(h.attempted_at).toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    if (!grouped[date]) grouped[date] = [];
+    grouped[date].push(h);
+  }
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-sm font-semibold text-gray-500 mb-3">📝 퀴즈 기록</h3>
+      <div className="space-y-4">
+        {Object.entries(grouped).map(([date, attempts]) => {
+          const correct = attempts.filter((a) => a.is_correct).length;
+          return (
+            <div key={date}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-500">{date}</span>
+                <span className="text-xs text-gray-400">
+                  {correct}/{attempts.length} 정답
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {attempts.map((a) => (
+                  <div
+                    key={a.id}
+                    className={`bg-white rounded-lg border p-3 text-sm ${
+                      a.is_correct ? "" : "border-l-4 border-l-red-400"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${a.is_correct ? "text-green-600" : "text-red-600"}`}>
+                          {a.is_correct ? "✅" : "❌"}
+                        </span>
+                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                          {quizTypeLabel[a.quiz_type] || a.quiz_type}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-400">
+                        {new Date(a.attempted_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-700 mb-1">{a.question}</p>
+                    {!a.is_correct && (
+                      <div className="text-xs space-y-0.5">
+                        <p>
+                          <span className="text-gray-400">내 답: </span>
+                          <span className="bg-red-100 text-red-600 px-1 rounded">{a.user_answer}</span>
+                        </p>
+                        <p>
+                          <span className="text-gray-400">정답: </span>
+                          <span className="bg-green-100 text-green-700 px-1 rounded">{a.correct_answer}</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
