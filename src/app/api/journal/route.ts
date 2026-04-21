@@ -96,7 +96,13 @@ ${JSON.stringify(expressions || [])}
       "is_new_pattern": true/false
     }
   ],
-  "used_expressions": ["사용자가 사용한 주목할 만한 표현만 (관용구, 구동사, 고급 어휘 등). 'moving on', 'sustainable salary' 같은 일반적 표현은 제외"],
+  "used_expressions": [
+    {
+      "expression": "주목할 만한 표현 (관용구, 구동사, 고급 어휘만. 일반적 표현 제외)",
+      "meaning": "한글 뜻",
+      "example": "아티클/일기에서 해당 표현이 사용된 문장 그대로 인용"
+    }
+  ],
   "scoring": {
     "vocabulary_score": 0-100,
     "grammar_score": 0-100,

@@ -109,10 +109,15 @@ export async function POST(request: Request) {
   }
 
   // 5. expressions usage_count 갱신 + 좋은 표현 자동 저장 (중복 체크)
-  for (const expr of feedback.used_expressions || []) {
+  for (const exprItem of feedback.used_expressions || []) {
+    // 새 형식 (object) 또는 이전 형식 (string) 모두 지원
+    const expr = typeof exprItem === "string" ? exprItem : exprItem.expression;
+    const meaning = typeof exprItem === "string" ? undefined : exprItem.meaning;
+    const example = typeof exprItem === "string" ? undefined : exprItem.example;
+
     const { data: allExprs } = await supabase
       .from("expressions")
-      .select("id, expression, usage_count")
+      .select("id, expression, usage_count, meaning, example_sentence")
       .eq("user_id", user.id);
 
     const exprLower = expr.toLowerCase().trim();
@@ -122,16 +127,17 @@ export async function POST(request: Request) {
     });
 
     if (existing) {
-      await supabase
-        .from("expressions")
-        .update({
-          usage_count: existing.usage_count + 1,
-          last_used_at: new Date().toISOString(),
-          status: "active",
-        })
-        .eq("id", existing.id);
+      const updates: Record<string, unknown> = {
+        usage_count: existing.usage_count + 1,
+        last_used_at: new Date().toISOString(),
+        status: "active",
+      };
+      if (!existing.meaning && meaning) updates.meaning = meaning;
+      if (!existing.example_sentence && example) updates.example_sentence = example;
+
+      await supabase.from("expressions").update(updates).eq("id", existing.id);
     } else {
-      await saveExpressionDeduped(supabase, user.id, expr, undefined, undefined, "journal", entry.id);
+      await saveExpressionDeduped(supabase, user.id, expr, meaning, example, "journal", entry.id);
     }
   }
 
