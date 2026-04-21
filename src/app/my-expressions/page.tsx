@@ -116,169 +116,150 @@ export default function MyExpressionsPage() {
     setLoading(false);
   }
 
-  const negativeItems = items.filter(i => i.score <= 0);
-  const positiveItems = items.filter(i => i.score > 0);
-
-  const displayItems =
-    filter === "negative" ? negativeItems :
-    filter === "positive" ? positiveItems : items;
+  const mistakes = items.filter(i => i.kind === "mistake").sort((a, b) => a.score - b.score);
+  const expressions = items.filter(i => i.kind === "expression").sort((a, b) => a.score - b.score);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl sm:text-2xl font-bold">내 표현 관리</h1>
         <div className="text-xs text-gray-400">
-          총 {items.length}개
+          실수 {mistakes.length}개 · 표현 {expressions.length}개
         </div>
-      </div>
-
-      <div className="flex gap-2">
-        {[
-          { key: "all" as const, label: "전체", count: items.length },
-          { key: "negative" as const, label: "집중 필요", count: negativeItems.length },
-          { key: "positive" as const, label: "잘하고 있어요", count: positiveItems.length },
-        ].map(({ key, label, count }) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filter === key
-                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                : "bg-white text-gray-500 border hover:bg-gray-50"
-            }`}
-          >
-            {label} ({count})
-          </button>
-        ))}
       </div>
 
       {loading ? (
         <div className="text-center py-12 text-gray-400">로딩 중...</div>
-      ) : displayItems.length === 0 ? (
+      ) : items.length === 0 ? (
         <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
-          {filter === "all"
-            ? "아직 관리할 표현이 없어요. 일기를 쓰거나 AI 코치에게 물어보세요! 📖"
-            : filter === "negative"
-              ? "집중이 필요한 항목이 없어요. 잘하고 있어요! 🎉"
-              : "아직 잘 관리되는 항목이 없어요. 일기를 더 써보세요!"}
+          아직 관리할 항목이 없어요. 일기를 쓰거나 AI 코치에게 물어보세요! 📖
         </div>
       ) : (
         <div
-          className="space-y-2"
-          data-coach-context={`내 표현 관리 현황:\n${displayItems.slice(0, 10).map(i => `${i.kind === "mistake" ? "실수" : "표현"}: ${i.title} (점수: ${i.score}) ${i.description}`).join("\n")}`}
+          className="space-y-8"
+          data-coach-context={`내 표현 관리 현황:\n${items.slice(0, 10).map(i => `${i.kind === "mistake" ? "실수" : "표현"}: ${i.title} (점수: ${i.score}) ${i.description}`).join("\n")}`}
         >
-          {(() => {
-            let mistakeIdx = 0;
-            let exprIdx = 0;
-            return displayItems.map((item) => {
-              const idx = item.kind === "mistake" ? ++mistakeIdx : ++exprIdx;
-              return (
-            <div
-              key={item.id}
-              className="bg-white rounded-xl border p-4"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] w-5 h-5 flex items-center justify-center rounded font-mono font-medium ${
-                    item.kind === "mistake" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
-                  }`}>
-                    {idx}
-                  </span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                    item.kind === "mistake" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
-                  }`}>
-                    {item.kind === "mistake" ? "실수" : "표현"}
-                  </span>
-                  <span className="font-semibold">{item.title}</span>
-                </div>
-                <span className={`text-sm font-bold ${
-                  item.score > 0 ? "text-green-600" : item.score < 0 ? "text-red-600" : "text-gray-400"
-                }`}>
-                  {item.score > 0 ? `+${item.score}` : item.score}
-                </span>
-              </div>
-
-              {item.description && (
-                <p className="text-xs text-gray-500">{item.description}</p>
-              )}
-
-              {item.kind === "expression" && item.example && (
-                <p className="text-xs text-gray-400 italic mt-1">{item.example}</p>
-              )}
-
-              {/* 출처 + 삭제 */}
-              {item.kind === "expression" && (
-                <div className="flex items-center justify-between mt-2">
-                  <div className="flex items-center gap-2">
-                    {item.sourceType && item.sourceType !== "unknown" && (
-                      <span className="text-[10px] text-gray-400">
-                        {sourceLabel[item.sourceType]?.emoji} {sourceLabel[item.sourceType]?.label}
-                        {item.sourceDate && ` · ${new Date(item.sourceDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}`}
+          {/* 실수 섹션 */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-red-600">🔴 실수 ({mistakes.length})</h2>
+            </div>
+            {mistakes.length === 0 ? (
+              <p className="text-xs text-gray-400 bg-white rounded-lg border p-4 text-center">실수가 없어요. 잘하고 있어요! 🎉</p>
+            ) : (
+              <div className="space-y-2">
+                {mistakes.map((item, idx) => (
+                  <div key={item.id} className="bg-white rounded-xl border p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] w-5 h-5 flex items-center justify-center rounded font-mono font-medium bg-red-50 text-red-600">
+                          {idx + 1}
+                        </span>
+                        <span className="font-semibold">{item.title}</span>
+                      </div>
+                      <span className={`text-sm font-bold ${
+                        item.score > 0 ? "text-green-600" : item.score < 0 ? "text-red-600" : "text-gray-400"
+                      }`}>
+                        {item.score > 0 ? `+${item.score}` : item.score}
                       </span>
-                    )}
-                    {item.sourceEntryId && (
-                      <a
-                        href={`/journal?tab=history&highlight=${encodeURIComponent(item.title)}`}
-                        className="text-[10px] text-blue-500 hover:underline"
-                      >
-                        원문 보기 →
-                      </a>
-                    )}
-                    {item.sourceArticleId && (
-                      <a
-                        href={`/new-content?articleId=${item.sourceArticleId}&highlight=${encodeURIComponent(item.title)}`}
-                        className="text-[10px] text-blue-500 hover:underline"
-                      >
-                        아티클 보기 →
-                      </a>
+                    </div>
+                    {item.description && <p className="text-xs text-gray-500">{item.description}</p>}
+                    {item.corrections && item.corrections.length > 0 && (
+                      <div className="mt-2 overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-200">
+                              <th className="text-left py-1 pr-2 text-gray-400 font-medium">내가 쓴 표현</th>
+                              <th className="text-left py-1 pr-2 text-gray-400 font-medium">올바른 표현</th>
+                              <th className="text-left py-1 text-gray-400 font-medium">일기</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {item.corrections.map((c, i) => (
+                              <tr key={i} className="border-b border-gray-50">
+                                <td className="py-1 pr-2">
+                                  <span className="bg-red-100 text-red-600 px-1 rounded">{c.original}</span>
+                                </td>
+                                <td className="py-1 pr-2">
+                                  <span className="bg-green-100 text-green-700 px-1 rounded">{c.corrected}</span>
+                                </td>
+                                <td className="py-1">
+                                  <a href="/journal?tab=history" className="text-blue-500 hover:underline whitespace-nowrap">
+                                    {new Date(c.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })} →
+                                  </a>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
-                  <button
-                    onClick={async () => {
-                      await supabase.from("expressions").delete().eq("id", item.realId);
-                      loadData();
-                    }}
-                    className="text-[10px] text-gray-300 hover:text-red-500 transition-colors"
-                  >
-                    삭제
-                  </button>
-                </div>
-              )}
+                ))}
+              </div>
+            )}
+          </div>
 
-              {item.kind === "mistake" && item.corrections && item.corrections.length > 0 && (
-                <div className="mt-2 overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-1 pr-2 text-gray-400 font-medium">내가 쓴 표현</th>
-                        <th className="text-left py-1 pr-2 text-gray-400 font-medium">올바른 표현</th>
-                        <th className="text-left py-1 text-gray-400 font-medium">일기</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {item.corrections.map((c, i) => (
-                        <tr key={i} className="border-b border-gray-50">
-                          <td className="py-1 pr-2">
-                            <span className="bg-red-100 text-red-600 px-1 rounded">{c.original}</span>
-                          </td>
-                          <td className="py-1 pr-2">
-                            <span className="bg-green-100 text-green-700 px-1 rounded">{c.corrected}</span>
-                          </td>
-                          <td className="py-1">
-                            <a href="/journal?tab=history" className="text-blue-500 hover:underline whitespace-nowrap">
-                              {new Date(c.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })} →
-                            </a>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+          {/* 표현 섹션 */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-blue-600">📚 표현 ({expressions.length})</h2>
             </div>
-              );
-            });
-          })()}
+            {expressions.length === 0 ? (
+              <p className="text-xs text-gray-400 bg-white rounded-lg border p-4 text-center">아직 표현이 없어요. AI 코치에게 물어보거나 일기를 써보세요! 📖</p>
+            ) : (
+              <div className="space-y-2">
+                {expressions.map((item, idx) => (
+                  <div key={item.id} className="bg-white rounded-xl border p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] w-5 h-5 flex items-center justify-center rounded font-mono font-medium bg-blue-50 text-blue-600">
+                          {idx + 1}
+                        </span>
+                        <span className="font-semibold">{item.title}</span>
+                      </div>
+                      <span className={`text-sm font-bold ${
+                        item.score > 0 ? "text-green-600" : item.score < 0 ? "text-red-600" : "text-gray-400"
+                      }`}>
+                        {item.score > 0 ? `+${item.score}` : item.score}
+                      </span>
+                    </div>
+                    {item.description && <p className="text-xs text-gray-500">{item.description}</p>}
+                    {item.example && <p className="text-xs text-gray-400 italic mt-1">{item.example}</p>}
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-2">
+                        {item.sourceType && item.sourceType !== "unknown" && (
+                          <span className="text-[10px] text-gray-400">
+                            {sourceLabel[item.sourceType]?.emoji} {sourceLabel[item.sourceType]?.label}
+                            {item.sourceDate && ` · ${new Date(item.sourceDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}`}
+                          </span>
+                        )}
+                        {item.sourceEntryId && (
+                          <a href={`/journal?tab=history&highlight=${encodeURIComponent(item.title)}`} className="text-[10px] text-blue-500 hover:underline">
+                            원문 보기 →
+                          </a>
+                        )}
+                        {item.sourceArticleId && (
+                          <a href={`/new-content?articleId=${item.sourceArticleId}&highlight=${encodeURIComponent(item.title)}`} className="text-[10px] text-blue-500 hover:underline">
+                            아티클 보기 →
+                          </a>
+                        )}
+                      </div>
+                      <button
+                        onClick={async () => {
+                          await supabase.from("expressions").delete().eq("id", item.realId);
+                          loadData();
+                        }}
+                        className="text-[10px] text-gray-300 hover:text-red-500 transition-colors"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
