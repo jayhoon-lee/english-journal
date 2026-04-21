@@ -98,11 +98,17 @@ ${JSON.stringify(expressions || [])}
   ],
   "used_expressions": [
     {
-      "expression": "주목할 만한 표현 (관용구, 구동사, 고급 어휘만. 일반적 표현 제외)",
-      "meaning": "한글 뜻",
-      "example": "아티클/일기에서 해당 표현이 사용된 문장 그대로 인용"
+      "expression": "사전적으로 등재된 정확한 표현 형태 (예: 'push back on', 'get the hang of')",
+      "meaning": "한글 뜻 (간결하게)",
+      "example": "사용자의 일기에서 해당 표현이 사용된 문장 그대로 인용"
     }
   ],
+  // used_expressions 규칙:
+  // 1. 원어민이 실제로 자주 쓰는 관용구, 구동사, 콜로케이션만 포함
+  // 2. 'moving on', 'good time', 'very nice' 같은 기본 표현은 절대 포함하지 마세요
+  // 3. expression은 사전에 등재된 정확한 형태로 (예: 'look forward to' O, 'looking forward to seeing' X)
+  // 4. example은 반드시 사용자가 쓴 원문에서 해당 표현이 포함된 문장을 그대로 인용
+  // 5. 해당 표현이 없으면 빈 배열 반환
   "scoring": {
     "vocabulary_score": 0-100,
     "grammar_score": 0-100,
