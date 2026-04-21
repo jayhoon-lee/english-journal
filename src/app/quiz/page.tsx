@@ -276,6 +276,9 @@ function QuizHistory({
   history: QuizAttempt[];
   quizTypeLabel: Record<string, string>;
 }) {
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const [retryAnswer, setRetryAnswer] = useState<string | null>(null);
+
   if (history.length === 0) return null;
 
   const grouped: Record<string, QuizAttempt[]> = {};
@@ -287,6 +290,26 @@ function QuizHistory({
     });
     if (!grouped[date]) grouped[date] = [];
     grouped[date].push(h);
+  }
+
+  function handleRetry(id: string) {
+    setRetrying(retrying === id ? null : id);
+    setRetryAnswer(null);
+  }
+
+  // Generate plausible options from the correct answer
+  function getOptions(attempt: QuizAttempt): string[] {
+    const options = [attempt.correct_answer];
+    if (attempt.user_answer && attempt.user_answer !== attempt.correct_answer) {
+      options.push(attempt.user_answer);
+    }
+    // Pad with dummy options if needed
+    const dummies = ["none of the above", "all of the above", "not applicable"];
+    while (options.length < 3) {
+      options.push(dummies[options.length - 1] || `option ${options.length}`);
+    }
+    // Shuffle
+    return options.sort(() => Math.random() - 0.5);
   }
 
   return (
@@ -304,41 +327,97 @@ function QuizHistory({
                 </span>
               </div>
               <div className="space-y-1.5">
-                {attempts.map((a) => (
-                  <div
-                    key={a.id}
-                    className={`bg-white rounded-lg border p-3 text-sm ${
-                      a.is_correct ? "" : "border-l-4 border-l-red-400"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs ${a.is_correct ? "text-green-600" : "text-red-600"}`}>
-                          {a.is_correct ? "✅" : "❌"}
-                        </span>
-                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                          {quizTypeLabel[a.quiz_type] || a.quiz_type}
-                        </span>
+                {attempts.map((a) => {
+                  const isRetrying = retrying === a.id;
+                  const options = isRetrying ? getOptions(a) : [];
+
+                  return (
+                    <div
+                      key={a.id}
+                      className={`bg-white rounded-lg border p-3 text-sm ${
+                        a.is_correct ? "" : "border-l-4 border-l-red-400"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs ${a.is_correct ? "text-green-600" : "text-red-600"}`}>
+                            {a.is_correct ? "✅" : "❌"}
+                          </span>
+                          <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                            {quizTypeLabel[a.quiz_type] || a.quiz_type}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-400">
+                            {new Date(a.attempted_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <button
+                            onClick={() => handleRetry(a.id)}
+                            className="text-[10px] text-blue-500 hover:underline"
+                          >
+                            {isRetrying ? "닫기" : "다시 풀기"}
+                          </button>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-gray-400">
-                        {new Date(a.attempted_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
-                      </span>
+
+                      <p className="text-xs text-gray-700 mb-1">{a.question}</p>
+
+                      {/* 이전 결과 */}
+                      {!isRetrying && !a.is_correct && (
+                        <div className="text-xs space-y-0.5">
+                          <p>
+                            <span className="text-gray-400">내 답: </span>
+                            <span className="bg-red-100 text-red-600 px-1 rounded">{a.user_answer}</span>
+                          </p>
+                          <p>
+                            <span className="text-gray-400">정답: </span>
+                            <span className="bg-green-100 text-green-700 px-1 rounded">{a.correct_answer}</span>
+                          </p>
+                        </div>
+                      )}
+
+                      {/* 다시 풀기 모드 */}
+                      {isRetrying && (
+                        <div className="mt-2 space-y-2">
+                          <p className="text-[10px] text-gray-400">
+                            이전 답: {a.is_correct ? "✅ 정답" : `❌ ${a.user_answer}`}
+                          </p>
+                          <div className="space-y-1.5">
+                            {options.map((opt) => {
+                              let style = "border hover:bg-gray-50";
+                              if (retryAnswer) {
+                                if (opt === a.correct_answer) style = "border-green-500 bg-green-50";
+                                else if (opt === retryAnswer) style = "border-red-500 bg-red-50";
+                                else style = "border opacity-50";
+                              }
+                              return (
+                                <button
+                                  key={opt}
+                                  onClick={() => !retryAnswer && setRetryAnswer(opt)}
+                                  disabled={!!retryAnswer}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${style}`}
+                                >
+                                  {opt}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {retryAnswer && (
+                            <p className={`text-xs p-2 rounded ${
+                              retryAnswer === a.correct_answer
+                                ? "bg-green-50 text-green-700"
+                                : "bg-red-50 text-red-700"
+                            }`}>
+                              {retryAnswer === a.correct_answer
+                                ? "이번엔 맞았어요! 🎉"
+                                : `정답: ${a.correct_answer}`}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-700 mb-1">{a.question}</p>
-                    {!a.is_correct && (
-                      <div className="text-xs space-y-0.5">
-                        <p>
-                          <span className="text-gray-400">내 답: </span>
-                          <span className="bg-red-100 text-red-600 px-1 rounded">{a.user_answer}</span>
-                        </p>
-                        <p>
-                          <span className="text-gray-400">정답: </span>
-                          <span className="bg-green-100 text-green-700 px-1 rounded">{a.correct_answer}</span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
