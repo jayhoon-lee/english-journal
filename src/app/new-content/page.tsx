@@ -483,9 +483,7 @@ function ReadingTab() {
                   )}
                 </div>
                 <div className="text-gray-700 text-[15px]">
-                  {historyArticle.content.split("\n\n").map((para, i) => (
-                    <p key={i} className="mb-4 leading-relaxed">{para}</p>
-                  ))}
+                  {renderArticleContent(historyArticle.content, historyArticle.highlightWords || [])}
                 </div>
               </div>
 

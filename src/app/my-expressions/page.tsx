@@ -48,7 +48,7 @@ export default function MyExpressionsPage() {
 
     const [patternsRes, expressionsRes, entriesRes] = await Promise.all([
       supabase.from("mistake_patterns").select("*").order("count", { ascending: false }),
-      supabase.from("expressions").select("*, source_type, source_entry_id, source_article_id").order("last_used_at", { ascending: true, nullsFirst: true }),
+      supabase.from("expressions").select("*").order("last_used_at", { ascending: true, nullsFirst: true }),
       supabase.from("journal_entries").select("id, date, feedback_json")
         .not("feedback_json", "is", null)
         .order("created_at", { ascending: false }).limit(20),
