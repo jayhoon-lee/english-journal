@@ -163,7 +163,10 @@ export default function MyExpressionsPage() {
               : "아직 잘 관리되는 항목이 없어요. 일기를 더 써보세요!"}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div
+          className="space-y-2"
+          data-coach-context={`내 표현 관리 현황:\n${displayItems.slice(0, 10).map(i => `${i.kind === "mistake" ? "실수" : "표현"}: ${i.title} (점수: ${i.score}) ${i.description}`).join("\n")}`}
+        >
           {(() => {
             let mistakeIdx = 0;
             let exprIdx = 0;

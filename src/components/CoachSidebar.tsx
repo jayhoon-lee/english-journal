@@ -124,14 +124,16 @@ export default function CoachSidebar() {
 
     let context = baseContexts[pathname || ""] || "";
 
-    // 현재 페이지에서 보이는 콘텐츠 캡처
+    // 현재 페이지에서 보이는 모든 컨텍스트 수집
     try {
-      const articleEl = document.querySelector("[data-coach-context]");
-      if (articleEl) {
-        const content = articleEl.getAttribute("data-coach-context");
-        if (content) {
-          context += `\n\n[현재 보고 있는 콘텐츠]\n${content.slice(0, 500)}`;
-        }
+      const elements = document.querySelectorAll("[data-coach-context]");
+      const contexts: string[] = [];
+      elements.forEach((el) => {
+        const content = el.getAttribute("data-coach-context");
+        if (content) contexts.push(content);
+      });
+      if (contexts.length > 0) {
+        context += `\n\n[현재 화면에 보이는 콘텐츠]\n${contexts.join("\n\n").slice(0, 1000)}`;
       }
     } catch {}
 

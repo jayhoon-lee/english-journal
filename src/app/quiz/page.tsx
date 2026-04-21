@@ -132,7 +132,10 @@ export default function QuizPage() {
     return (
       <div className="space-y-6">
         <h1 className="text-xl sm:text-2xl font-bold">퀴즈 결과</h1>
-        <div className="bg-white rounded-xl border p-8 text-center space-y-4">
+        <div
+          className="bg-white rounded-xl border p-8 text-center space-y-4"
+          data-coach-context={`퀴즈 결과: ${score}/${questions.length}\n${questions.map((q, i) => `문제${i+1}: ${q.question} → 정답: ${q.correct_answer}, 해설: ${q.explanation}`).join("\n")}`}
+        >
           <div className="text-5xl font-bold text-blue-600">
             {score} / {questions.length}
           </div>
@@ -166,7 +169,10 @@ export default function QuizPage() {
         </span>
       </div>
 
-      <div className="bg-white rounded-xl border p-6 space-y-5">
+      <div
+        className="bg-white rounded-xl border p-6 space-y-5"
+        data-coach-context={`퀴즈 ${current + 1}/${questions.length}\n유형: ${quizTypeLabel[q.quiz_type] || q.quiz_type}\n문제: ${q.question}\n보기: ${q.options.join(", ")}\n정답: ${q.correct_answer}\n관련 패턴: ${q.related_pattern || "없음"}${answered ? `\n사용자 답: ${selected}\n결과: ${selected === q.correct_answer ? "정답" : "오답"}\n해설: ${q.explanation}` : ""}`}
+      >
         <div className="flex items-center gap-2">
           <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-medium">
             {quizTypeLabel[q.quiz_type] || q.quiz_type}
