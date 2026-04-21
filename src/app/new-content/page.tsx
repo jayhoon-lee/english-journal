@@ -108,16 +108,21 @@ function ReadingTab() {
     setHistoryLoading(false);
   }
 
+  const [historyArticle, setHistoryArticle] = useState<Article | null>(null);
+  const [historyLoadingId, setHistoryLoadingId] = useState<string | null>(null);
+
   async function loadFromHistory(id: string) {
-    setLoading(true);
-    setError("");
+    setHistoryLoadingId(id);
     const res = await fetch(`/api/article/${id}`);
     const data = await res.json();
     if (data.article) {
-      setArticle(data.article);
-      setHintMode(false);
+      setHistoryArticle(data.article);
     }
-    setLoading(false);
+    setHistoryLoadingId(null);
+  }
+
+  function closeHistoryArticle() {
+    setHistoryArticle(null);
   }
 
   useEffect(() => {
@@ -424,10 +429,17 @@ function ReadingTab() {
               <button
                 key={h.id}
                 onClick={() => loadFromHistory(h.id)}
-                className="w-full bg-white rounded-lg border p-3 text-left hover:border-blue-300 transition-colors"
+                disabled={historyLoadingId === h.id}
+                className={`w-full bg-white rounded-lg border p-3 text-left transition-colors ${
+                  historyArticle?.title === h.title
+                    ? "border-blue-400 bg-blue-50"
+                    : "hover:border-blue-300"
+                }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">{h.title}</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    {historyLoadingId === h.id ? "불러오는 중..." : h.title}
+                  </span>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
                       {h.level}
@@ -443,6 +455,63 @@ function ReadingTab() {
               </button>
             ))}
           </div>
+
+          {/* 선택한 히스토리 아티클 */}
+          {historyArticle && (
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-500">📖 이전 아티클 보기</h4>
+                <button
+                  onClick={closeHistoryArticle}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >
+                  닫기 ✕
+                </button>
+              </div>
+              <div className="bg-white rounded-xl border p-6">
+                <h2 className="text-lg font-bold mb-2">{historyArticle.title}</h2>
+                <div className="flex gap-2 mb-4">
+                  {historyArticle.level && (
+                    <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                      CEFR {historyArticle.level}
+                    </span>
+                  )}
+                  {historyArticle.topic && (
+                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                      {historyArticle.topic}
+                    </span>
+                  )}
+                </div>
+                <div className="text-gray-700 text-[15px]">
+                  {historyArticle.content.split("\n\n").map((para, i) => (
+                    <p key={i} className="mb-4 leading-relaxed">{para}</p>
+                  ))}
+                </div>
+              </div>
+
+              {historyArticle.highlightWords?.length > 0 && (
+                <div className="bg-white rounded-xl border p-5">
+                  <h3 className="text-xs font-semibold text-gray-500 mb-3">이 글에 포함된 표현</h3>
+                  <div className="space-y-1.5">
+                    {historyArticle.highlightWords.map((h: HighlightWord, i: number) => (
+                      <div key={i} className="flex items-start gap-2 text-sm">
+                        <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          h.type === "mistake" ? "bg-red-50 text-red-600"
+                            : h.source === "ai" ? "bg-green-50 text-green-600"
+                            : "bg-blue-50 text-blue-600"
+                        }`}>
+                          {h.type === "mistake" ? "실수" : h.source === "ai" ? "새표현" : "표현"}
+                        </span>
+                        <span className="font-medium">{h.word}</span>
+                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-600">{h.meaning}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
