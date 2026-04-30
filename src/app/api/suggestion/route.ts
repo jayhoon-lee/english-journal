@@ -1,6 +1,44 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
+// 동점 그룹 내에서만 랜덤 셔플하고 정해진 개수만 반환
+function pickWithTieBreak<T>(items: T[], keyFn: (item: T) => number | string, count: number): T[] {
+  const groups = new Map<number | string, T[]>();
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
+  }
+  const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    return String(a).localeCompare(String(b));
+  });
+  const result: T[] = [];
+  for (const key of sortedKeys) {
+    const group = groups.get(key)!;
+    for (let i = group.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [group[i], group[j]] = [group[j], group[i]];
+    }
+    for (const item of group) {
+      if (result.length >= count) return result;
+      result.push(item);
+    }
+  }
+  return result;
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -11,16 +49,6 @@ export async function GET() {
     return NextResponse.json({ suggestions: [] });
   }
 
-  // 1. Active 실수 패턴 확인
-  const { data: mistakes } = await supabase
-    .from("mistake_patterns")
-    .select("pattern_name, rule, examples, count")
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .order("count", { ascending: false })
-    .limit(2);
-
-  // 2. 사용자 레벨 확인
   const { data: stats } = await supabase
     .from("user_stats")
     .select("level, current_eqs")
@@ -29,25 +57,24 @@ export async function GET() {
 
   const userLevel = stats?.level || 1;
 
-  // 3. Dormant/Forgotten 표현 확인
-  const { data: dormantExpressions } = await supabase
+  const POOL_SIZE = 30;
+
+  const { data: dormantPool } = await supabase
     .from("expressions")
-    .select("expression, meaning, usage_count, status")
+    .select("expression, meaning, usage_count, status, last_used_at")
     .eq("user_id", user.id)
     .in("status", ["dormant", "forgotten"])
     .order("last_used_at", { ascending: true, nullsFirst: true })
-    .limit(2);
+    .limit(POOL_SIZE);
 
-  // 4. Active 표현 중 usage_count 낮은 것
-  const { data: lowUsageExpressions } = await supabase
+  const { data: lowUsagePool } = await supabase
     .from("expressions")
     .select("expression, meaning, usage_count, status")
     .eq("user_id", user.id)
     .eq("status", "active")
     .order("usage_count", { ascending: true })
-    .limit(2);
+    .limit(POOL_SIZE);
 
-  // 5. 사용자 수준에 맞는 추천 콘텐츠 (아직 저장 안 한 것)
   const difficultyMap: Record<number, string[]> = {
     1: ["easy"],
     2: ["easy"],
@@ -61,86 +88,34 @@ export async function GET() {
   };
   const targetDifficulty = difficultyMap[userLevel] || ["intermediate"];
 
-  const { data: levelBasedContent } = await supabase
+  const { data: levelBasedPool } = await supabase
     .from("recommended_content")
     .select("content, meaning, difficulty")
     .eq("user_id", user.id)
     .eq("is_saved", false)
     .in("difficulty", targetDifficulty)
-    .limit(2);
-
-  // 실수 패턴에 해당하는 일기 찾기
-  const { data: entriesWithFeedback } = await supabase
-    .from("journal_entries")
-    .select("id, date, original_text, corrected_text, feedback_json, created_at")
-    .eq("user_id", user.id)
-    .not("feedback_json", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(POOL_SIZE);
 
   const suggestions: {
-    type: "mistake" | "expression";
+    type: "expression";
     emoji: string;
     title: string;
     description: string;
-    example?: string;
-    entryId?: string;
-    entryDate?: string;
-    original?: string;
-    corrected?: string;
   }[] = [];
 
-  // 실수 패턴 추가 (실제 예시 + 일기 링크 포함)
-  if (mistakes?.length) {
-    for (const m of mistakes) {
-      const lastExample = m.examples?.length ? m.examples[m.examples.length - 1] : null;
+  const exprSlots = 3;
 
-      let entryId: string | undefined;
-      let entryDate: string | undefined;
-      let originalSnippet: string | undefined;
-      let correctedSnippet: string | undefined;
+  // dormant: last_used_at ASC (nulls first) + 동점 랜덤
+  // lowUsage: usage_count ASC + 동점 랜덤
+  const expressionsPool = dormantPool?.length
+    ? pickWithTieBreak(
+        dormantPool,
+        (e) => e.last_used_at ?? "",
+        exprSlots
+      )
+    : pickWithTieBreak(lowUsagePool || [], (e) => e.usage_count ?? 0, exprSlots);
 
-      if (entriesWithFeedback?.length) {
-        for (const entry of entriesWithFeedback) {
-          try {
-            const fb = JSON.parse(entry.feedback_json);
-            const match = fb.mistakes?.find(
-              (mistake: { pattern_name: string }) => mistake.pattern_name === m.pattern_name
-            );
-            if (match) {
-              entryId = entry.id;
-              entryDate = entry.date;
-              originalSnippet = match.original;
-              correctedSnippet = match.corrected;
-              break;
-            }
-          } catch {}
-        }
-      }
-
-      suggestions.push({
-        type: "mistake",
-        emoji: "⚠️",
-        title: m.pattern_name,
-        description: `${m.count}회 반복 — ${m.rule || "주의가 필요해요."}`,
-        example: lastExample || undefined,
-        entryId,
-        entryDate,
-        original: originalSnippet,
-        corrected: correctedSnippet,
-      });
-    }
-  }
-
-  // 표현 추가 (실수가 적으면 더 많이)
-  const exprSlots = Math.max(1, 3 - suggestions.length);
-
-  // 우선순위: 잊혀가는 표현 > 덜 익숙한 표현 > 수준별 추천 콘텐츠
-  const expressionsToShow = dormantExpressions?.length
-    ? dormantExpressions
-    : lowUsageExpressions || [];
-
-  for (const e of expressionsToShow.slice(0, exprSlots)) {
+  for (const e of expressionsPool) {
     const statusLabel =
       e.status === "forgotten" ? "오랫동안 안 쓴" :
       e.status === "dormant" ? "잊혀가는" : "아직 덜 익숙한";
@@ -153,9 +128,10 @@ export async function GET() {
     });
   }
 
-  // 기존 표현이 부족하면 수준에 맞는 추천 콘텐츠 표시
-  if (suggestions.length < 3 && levelBasedContent?.length) {
-    for (const c of levelBasedContent.slice(0, 3 - suggestions.length)) {
+  if (suggestions.length < 3 && levelBasedPool?.length) {
+    const remaining = 3 - suggestions.length;
+    const picked = shuffle(levelBasedPool).slice(0, remaining);
+    for (const c of picked) {
       const levelLabel = c.difficulty === "easy" ? "기초" : c.difficulty === "advanced" ? "고급" : "중급";
       suggestions.push({
         type: "expression",

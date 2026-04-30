@@ -150,38 +150,62 @@ function JournalContent() {
     setSaved(false);
     setError("");
 
-    const res = await fetch("/api/journal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-
-    const reader = res.body?.getReader();
-    const decoder = new TextDecoder();
     let fullText = "";
-
-    while (reader) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
-
-      for (const line of lines) {
-        const data = JSON.parse(line.slice(6));
-        if (data.error) {
-          setError(data.error);
-          setStreaming(false);
-          return;
-        } else if (data.done) {
-          fullText = data.fullText;
-        } else {
-          setStreamText((prev) => prev + data.text);
-        }
-      }
-    }
+    let errored = false;
 
     try {
+      const res = await fetch("/api/journal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!res.ok || !res.body) {
+        throw new Error(`서버 응답 오류 (${res.status})`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE 이벤트는 \n\n로 구분됨 — 완성된 이벤트만 처리하고 나머지는 버퍼에 보관
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+
+        for (const event of events) {
+          const line = event.split("\n").find((l) => l.startsWith("data: "));
+          if (!line) continue;
+
+          let data: { text?: string; done?: boolean; fullText?: string; error?: string };
+          try {
+            data = JSON.parse(line.slice(6));
+          } catch {
+            continue;
+          }
+
+          if (data.error) {
+            setError(data.error);
+            errored = true;
+            try { await reader.cancel(); } catch {}
+            return;
+          } else if (data.done) {
+            fullText = data.fullText || "";
+          } else if (data.text) {
+            setStreamText((prev) => prev + data.text);
+          }
+        }
+      }
+
+      if (!fullText) {
+        throw new Error("AI 응답을 받지 못했어요. 다시 시도해주세요.");
+      }
+
       const cleaned = fullText
         .replace(/```json\n?/g, "")
         .replace(/```\n?/g, "")
@@ -202,11 +226,14 @@ function JournalContent() {
         console.error("Save failed:", err);
       }
     } catch (e) {
-      console.error("Parse error:", e, "fullText:", fullText);
+      console.error("Submit error:", e, "fullText:", fullText);
+      if (!errored) {
+        setError(e instanceof Error ? e.message : "분석 중 오류가 발생했어요. 다시 시도해주세요.");
+      }
+    } finally {
+      setSaving(false);
+      setStreaming(false);
     }
-
-    setSaving(false);
-    setStreaming(false);
   }
 
   const scoreColor = (score: number) =>
@@ -316,70 +343,15 @@ function JournalContent() {
                   className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
                   <span className="text-xs font-medium text-gray-500">
-                    📌 오늘의 작성 팁 ({suggestions.filter(s => s.type === "mistake").length}개 주의 · {suggestions.filter(s => s.type === "expression").length}개 표현)
+                    💡 오늘 써볼 표현 ({suggestions.filter(s => s.type === "expression").length}개)
                   </span>
                   <span className="text-xs text-gray-400">{tipsOpen ? "접기 ▲" : "펼치기 ▼"}</span>
                 </button>
 
                 {tipsOpen && (
                   <div className="p-3 space-y-2">
-                    {/* 주의할 실수 */}
-                    {suggestions.filter(s => s.type === "mistake").length > 0 && (
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] font-semibold text-amber-600 uppercase">⚠️ 주의할 실수</p>
-                        {suggestions.filter(s => s.type === "mistake").map((s, i) => (
-                          <div key={`m-${i}`} className="p-2.5 bg-amber-50 border border-amber-100 rounded-lg text-sm">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold">{s.title}</span>
-                              {s.entryDate && (
-                                <span className="text-[10px] text-gray-400">
-                                  {new Date(s.entryDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-500">{s.description}</p>
-                            {(s.original || s.corrected) && (
-                              <div className="mt-1.5 py-1.5 px-2.5 bg-white/60 rounded space-y-0.5">
-                                {s.original && (
-                                  <p className="text-xs">
-                                    <span className="text-gray-400 mr-1">✗</span>
-                                    <span className="bg-red-100 text-red-600 px-1 rounded">{s.original}</span>
-                                  </p>
-                                )}
-                                {s.corrected && (
-                                  <p className="text-xs">
-                                    <span className="text-gray-400 mr-1">✓</span>
-                                    <span className="bg-green-100 text-green-700 px-1 rounded">{s.corrected}</span>
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                            {s.entryId && (
-                              <button
-                                onClick={() => {
-                                  const entry = entries.find(e => e.id === s.entryId);
-                                  setPreviousTab(tab);
-                                  if (entry) {
-                                    setTab("history");
-                                    setTimeout(() => setSelectedEntry(entry), 100);
-                                  } else {
-                                    setTab("history");
-                                  }
-                                }}
-                                className="text-[10px] text-blue-500 hover:underline mt-1"
-                              >
-                                해당 일기 보기 →
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* 써볼 표현 */}
                     {suggestions.filter(s => s.type === "expression").length > 0 && (
                       <div className="space-y-1.5">
-                        <p className="text-[10px] font-semibold text-blue-600 uppercase">💡 오늘 써볼 표현</p>
                         {suggestions.filter(s => s.type === "expression").map((s, i) => (
                           <div key={`e-${i}`} className="p-2.5 bg-blue-50 border border-blue-100 rounded-lg text-sm">
                             <div className="font-semibold text-blue-800">{s.title}</div>

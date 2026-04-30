@@ -72,12 +72,17 @@ export async function POST(request: Request) {
 사용자의 레벨과 실수 패턴을 참고해서 새로운 학습 콘텐츠 3개를 추천하세요.
 사용자가 이미 알고 있는 표현은 제외하세요.
 
+**meaning 규칙: 반드시 사전적(dictionary) 의미만 적으세요. 문맥상 의역/부정/시제 변형 금지.**
+- 예: "barely" → "거의 ~ 않다" (O), "거의 멈추지 않았다" (X)
+- 예: "look forward to" → "~을 기대하다" (O), "그것을 기대했다" (X)
+- meaning에 주어/목적어/시제 정보 절대 포함 금지. 표현 단독의 사전 정의만.
+
 다음 JSON 배열로만 응답하세요. JSON 외 다른 텍스트는 포함하지 마세요:
 [
   {
     "type": "expression" | "grammar" | "vocabulary" | "phrasal_verb",
     "content": "추천 표현/문법/단어",
-    "meaning": "한글 의미",
+    "meaning": "사전적 한글 의미",
     "example": "예문",
     "context": "어떤 상황에서 사용하는지 (한글)",
     "difficulty": "easy" | "intermediate" | "advanced",

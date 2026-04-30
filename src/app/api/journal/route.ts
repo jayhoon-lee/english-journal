@@ -99,7 +99,7 @@ ${JSON.stringify(expressions || [])}
   "used_expressions": [
     {
       "expression": "사전적으로 등재된 정확한 표현 형태 (예: 'push back on', 'get the hang of')",
-      "meaning": "한글 뜻 (간결하게)",
+      "meaning": "사전적 의미만 (한글, 간결하게)",
       "example": "사용자의 일기에서 해당 표현이 사용된 문장 그대로 인용"
     }
   ],
@@ -109,6 +109,10 @@ ${JSON.stringify(expressions || [])}
   // 3. expression은 사전에 등재된 정확한 형태로 (예: 'look forward to' O, 'looking forward to seeing' X)
   // 4. example은 반드시 사용자가 쓴 원문에서 해당 표현이 포함된 문장을 그대로 인용
   // 5. 해당 표현이 없으면 빈 배열 반환
+  // 6. **meaning은 반드시 사전적(dictionary) 의미만 적으세요. 문맥상 의역이나 부정/시제 변형 의미는 절대 금지.**
+  //    - 예: "barely"의 meaning은 "거의 ~ 않다"이지, "거의 멈추지 않았다"가 아님
+  //    - 예: "look forward to"의 meaning은 "~을 기대하다"이지, "그것을 기대했다"가 아님
+  //    - meaning은 표현 단독의 사전 정의만, 주어/목적어/시제 정보 포함 금지
   "scoring": {
     "vocabulary_score": 0-100,
     "grammar_score": 0-100,

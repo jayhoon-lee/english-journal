@@ -95,6 +95,39 @@ function ReadingTab() {
   const [maxWords, setMaxWords] = useState(100);
   const [history, setHistory] = useState<ArticleHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [translationCache, setTranslationCache] = useState<Record<string, string>>({});
+  const [translationLoading, setTranslationLoading] = useState<string | null>(null);
+  const [showTranslation, setShowTranslation] = useState<Record<string, boolean>>({});
+
+  async function toggleArticleTranslation(cacheKey: string, content: string) {
+    if (showTranslation[cacheKey]) {
+      setShowTranslation((prev) => ({ ...prev, [cacheKey]: false }));
+      return;
+    }
+    if (translationCache[cacheKey]) {
+      setShowTranslation((prev) => ({ ...prev, [cacheKey]: true }));
+      return;
+    }
+    setTranslationLoading(cacheKey);
+    try {
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: content }),
+      });
+      const data = await res.json();
+      if (data.error || !data.translation) {
+        alert(data.error || "번역에 실패했어요.");
+        return;
+      }
+      setTranslationCache((prev) => ({ ...prev, [cacheKey]: data.translation }));
+      setShowTranslation((prev) => ({ ...prev, [cacheKey]: true }));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "번역 중 오류가 발생했어요.");
+    } finally {
+      setTranslationLoading(null);
+    }
+  }
 
   useEffect(() => {
     loadHistory();
@@ -308,16 +341,33 @@ function ReadingTab() {
                   </span>
                 </div>
               </div>
-              <button
-                onClick={() => setHintMode(!hintMode)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  hintMode
-                    ? "bg-amber-100 text-amber-700 border border-amber-200"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {hintMode ? "💡 힌트 ON" : "💡 힌트 OFF"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => toggleArticleTranslation(`current`, article.content)}
+                  disabled={translationLoading === `current`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                    showTranslation[`current`]
+                      ? "bg-blue-100 text-blue-700 border border-blue-200"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {translationLoading === `current`
+                    ? "번역 중..."
+                    : showTranslation[`current`]
+                      ? "🇰🇷 번역 숨기기"
+                      : "🇰🇷 번역 보기"}
+                </button>
+                <button
+                  onClick={() => setHintMode(!hintMode)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    hintMode
+                      ? "bg-amber-100 text-amber-700 border border-amber-200"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {hintMode ? "💡 힌트 ON" : "💡 힌트 OFF"}
+                </button>
+              </div>
             </div>
 
             {/* 난이도 조절 */}
@@ -358,6 +408,15 @@ function ReadingTab() {
             >
               {renderArticleContent(article.content, article.highlightWords)}
             </div>
+
+            {showTranslation[`current`] && translationCache[`current`] && (
+              <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
+                <p className="text-[10px] uppercase font-semibold text-blue-600 mb-2">🇰🇷 한국어 번역</p>
+                <div className="text-gray-700 text-[15px] whitespace-pre-wrap leading-relaxed">
+                  {translationCache[`current`]}
+                </div>
+              </div>
+            )}
           </div>
 
           {hintMode && article.highlightWords.length > 0 && (
@@ -425,91 +484,122 @@ function ReadingTab() {
         <div className="mt-6">
           <h3 className="text-sm font-semibold text-gray-500 mb-3">📄 이전 아티클</h3>
           <div className="space-y-2">
-            {history.map((h) => (
-              <button
-                key={h.id}
-                onClick={() => loadFromHistory(h.id)}
-                disabled={historyLoadingId === h.id}
-                className={`w-full bg-white rounded-lg border p-3 text-left transition-colors ${
-                  historyArticle?.title === h.title
-                    ? "border-blue-400 bg-blue-50"
-                    : "hover:border-blue-300"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">
-                    {historyLoadingId === h.id ? "불러오는 중..." : h.title}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
-                      {h.level}
-                    </span>
-                    <span className="text-[10px] text-gray-400">
-                      {new Date(h.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
-                    </span>
-                  </div>
-                </div>
-                {h.topic && (
-                  <span className="text-xs text-gray-400">{h.topic}</span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* 선택한 히스토리 아티클 */}
-          {historyArticle && (
-            <div className="mt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-gray-500">📖 이전 아티클 보기</h4>
-                <button
-                  onClick={closeHistoryArticle}
-                  className="text-xs text-gray-400 hover:text-gray-600"
-                >
-                  닫기 ✕
-                </button>
-              </div>
-              <div className="bg-white rounded-xl border p-6">
-                <h2 className="text-lg font-bold mb-2">{historyArticle.title}</h2>
-                <div className="flex gap-2 mb-4">
-                  {historyArticle.level && (
-                    <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
-                      CEFR {historyArticle.level}
-                    </span>
-                  )}
-                  {historyArticle.topic && (
-                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                      {historyArticle.topic}
-                    </span>
-                  )}
-                </div>
-                <div className="text-gray-700 text-[15px]">
-                  {renderArticleContent(historyArticle.content, historyArticle.highlightWords || [])}
-                </div>
-              </div>
-
-              {historyArticle.highlightWords?.length > 0 && (
-                <div className="bg-white rounded-xl border p-5">
-                  <h3 className="text-xs font-semibold text-gray-500 mb-3">이 글에 포함된 표현</h3>
-                  <div className="space-y-1.5">
-                    {historyArticle.highlightWords.map((h: HighlightWord, i: number) => (
-                      <div key={i} className="flex items-start gap-2 text-sm">
-                        <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                          h.type === "mistake" ? "bg-red-50 text-red-600"
-                            : h.source === "ai" ? "bg-green-50 text-green-600"
-                            : "bg-blue-50 text-blue-600"
-                        }`}>
-                          {h.type === "mistake" ? "실수" : h.source === "ai" ? "새표현" : "표현"}
+            {history.map((h) => {
+              const isSelected = historyArticle?.id === h.id;
+              return (
+                <div key={h.id} className="space-y-2">
+                  <button
+                    onClick={() => isSelected ? closeHistoryArticle() : loadFromHistory(h.id)}
+                    disabled={historyLoadingId === h.id}
+                    className={`w-full bg-white rounded-lg border p-3 text-left transition-colors ${
+                      isSelected
+                        ? "border-blue-400 bg-blue-50"
+                        : "hover:border-blue-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">
+                        {historyLoadingId === h.id ? "불러오는 중..." : h.title}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                          {h.level}
                         </span>
-                        <span className="font-medium">{h.word}</span>
-                        <span className="text-gray-400">—</span>
-                        <span className="text-gray-600">{h.meaning}</span>
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(h.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                        </span>
+                        <span className="text-[10px] text-gray-400 ml-1">
+                          {isSelected ? "▲" : "▼"}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                    {h.topic && (
+                      <span className="text-xs text-gray-400">{h.topic}</span>
+                    )}
+                  </button>
+
+                  {isSelected && historyArticle && (
+                    <div className="space-y-4 pl-2 border-l-2 border-blue-200">
+                      <div className="bg-white rounded-xl border p-6">
+                        <div className="flex items-start justify-between mb-2 gap-3">
+                          <h2 className="text-lg font-bold">{historyArticle.title}</h2>
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              onClick={() => toggleArticleTranslation(`history-${historyArticle.id}`, historyArticle.content)}
+                              disabled={translationLoading === `history-${historyArticle.id}`}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                                showTranslation[`history-${historyArticle.id}`]
+                                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
+                            >
+                              {translationLoading === `history-${historyArticle.id}`
+                                ? "번역 중..."
+                                : showTranslation[`history-${historyArticle.id}`]
+                                  ? "🇰🇷 번역 숨기기"
+                                  : "🇰🇷 번역 보기"}
+                            </button>
+                            <button
+                              onClick={closeHistoryArticle}
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                            >
+                              닫기 ✕
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mb-4">
+                          {historyArticle.level && (
+                            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                              CEFR {historyArticle.level}
+                            </span>
+                          )}
+                          {historyArticle.topic && (
+                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                              {historyArticle.topic}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-gray-700 text-[15px]">
+                          {renderArticleContent(historyArticle.content, historyArticle.highlightWords || [])}
+                        </div>
+
+                        {showTranslation[`history-${historyArticle.id}`] && translationCache[`history-${historyArticle.id}`] && (
+                          <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
+                            <p className="text-[10px] uppercase font-semibold text-blue-600 mb-2">🇰🇷 한국어 번역</p>
+                            <div className="text-gray-700 text-[15px] whitespace-pre-wrap leading-relaxed">
+                              {translationCache[`history-${historyArticle.id}`]}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {historyArticle.highlightWords?.length > 0 && (
+                        <div className="bg-white rounded-xl border p-5">
+                          <h3 className="text-xs font-semibold text-gray-500 mb-3">이 글에 포함된 표현</h3>
+                          <div className="space-y-1.5">
+                            {historyArticle.highlightWords.map((hw: HighlightWord, i: number) => (
+                              <div key={i} className="flex items-start gap-2 text-sm">
+                                <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                  hw.type === "mistake" ? "bg-red-50 text-red-600"
+                                    : hw.source === "ai" ? "bg-green-50 text-green-600"
+                                    : "bg-blue-50 text-blue-600"
+                                }`}>
+                                  {hw.type === "mistake" ? "실수" : hw.source === "ai" ? "새표현" : "표현"}
+                                </span>
+                                <span className="font-medium">{hw.word}</span>
+                                <span className="text-gray-400">—</span>
+                                <span className="text-gray-600">{hw.meaning}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

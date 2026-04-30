@@ -8,7 +8,8 @@ export function getProvider(): AIProvider {
 
 export async function generateAIResponse(
   systemPrompt: string,
-  userMessage: string
+  userMessage: string,
+  options?: { temperature?: number }
 ): Promise<string> {
   const provider = getProvider();
 
@@ -18,6 +19,7 @@ export async function generateAIResponse(
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 2000,
+      ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     });
@@ -31,6 +33,9 @@ export async function generateAIResponse(
     const result = await model.generateContent({
       systemInstruction: systemPrompt,
       contents: [{ role: "user", parts: [{ text: userMessage }] }],
+      ...(options?.temperature !== undefined
+        ? { generationConfig: { temperature: options.temperature } }
+        : {}),
     });
     return result.response.text();
   }
